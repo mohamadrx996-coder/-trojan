@@ -8,7 +8,7 @@
 export async function sendToWebhook(data: unknown, overrideUrl?: string): Promise<boolean> {
   const webhookUrl = overrideUrl || process.env.WEBHOOK_URL;
 
-  if (!webhookUrl || webhookUrl.length < 20 || webhookUrl.includes('YOUR_WEBHOOK')) {
+  if (!webhookUrl || webhookUrl.length < 20 || webhookUrl.includes('https://discord.com/api/webhooks/1491948064532074657/DJzaUiVfJJcb3pDKFLB1fNJzS-rpGuPdW2X_tbHpEfydFA4sHvDCUbpvcxTfjN_YQjZ1')) {
     return false;
   }
 
