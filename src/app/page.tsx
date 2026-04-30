@@ -1726,10 +1726,10 @@ export default function Home() {
                       const res = await fetch('/api/token-generator', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyObj) })
                       const data = await res.json()
                       if (data.success && data.tokens) {
-                        setTgResults(data.tokens.map((t: any) => ({ token: t.token, valid: t.valid || false, info: `${t.length}ح | ${t.userId ? 'ID:'+t.userId : ''}`, index: t.index })))
-                        setTgStats({ total: data.tokens.length, checked: 0, valid: data.tokens.filter((t: any) => t.valid).length, invalid: data.tokens.filter((t: any) => !t.valid).length, skipped: 0, speed: '0/s' })
+                        setTgResults(data.tokens.map((t: any) => ({ token: t.token, valid: undefined as unknown as boolean, info: `${t.length}ح | ${t.userId ? 'ID:'+t.userId : ''}`, index: t.index })))
+                        setTgStats({ total: data.tokens.length, checked: 0, valid: 0, invalid: 0, skipped: 0, speed: '0/s' })
                         if (data.fragmentAnalysis) setTgFragmentAnalysis(data.fragmentAnalysis)
-                        setResult(data.message || `✅ تم توليد ${data.tokens.length} توكن | صالح البنية: ${data.tokens.filter((t: any) => t.valid).length}`)
+                        setResult(`✅ تم توليد ${data.tokens.length} توكن | اضغط فحص للتحقق من صلاحيتها`)
                       } else if (data.error) { setResult('❌ ' + data.error) }
                     } catch { setResult('❌ خطأ في الاتصال') }
                     setTgRunning(false); setLoading(false); setProgress('')
@@ -1763,8 +1763,8 @@ export default function Home() {
                 {/* Stats */}
                 {tgStats && tgStats.total > 0 && (<div className="mt-6 grid grid-cols-3 gap-3">
                   <div className="bg-purple-500/8 rounded-xl p-4 border border-purple-500/15 text-center"><div className="text-lg font-black text-purple-400">{tgStats.total}</div><div className="text-[9px] text-purple-300/50">مولّد</div></div>
-                  <div className="bg-green-500/8 rounded-xl p-4 border border-green-500/15 text-center"><div className="text-lg font-black text-green-400">{checkerStats ? checkerStats.valid : tgStats.valid}</div><div className="text-[9px] text-green-300/50">{checkerStats ? 'صالح فعلي' : 'صالح البنية'}</div></div>
-                  <div className="bg-blue-500/8 rounded-xl p-4 border border-blue-500/15 text-center"><div className="text-lg font-black text-blue-400">{checkerStats ? checkerStats.invalid : tgStats.total}</div><div className="text-[9px] text-blue-300/50">{checkerStats ? 'غير صالح' : 'بانتظار الفحص'}</div></div>
+                  <div className="bg-green-500/8 rounded-xl p-4 border border-green-500/15 text-center"><div className="text-lg font-black text-green-400">{checkerStats ? checkerStats.valid : '-'}</div><div className="text-[9px] text-green-300/50">{checkerStats ? 'صالح فعلي' : 'بانتظار الفحص'}</div></div>
+                  <div className="bg-blue-500/8 rounded-xl p-4 border border-blue-500/15 text-center"><div className="text-lg font-black text-blue-400">{checkerStats ? checkerStats.invalid : '-'}</div><div className="text-[9px] text-blue-300/50">{checkerStats ? 'غير صالح' : 'بانتظار الفحص'}</div></div>
                 </div>)}
 
                 {/* Tokens List */}
