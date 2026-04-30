@@ -1683,90 +1683,25 @@ export default function Home() {
 
                 <div className="mb-6"><label className="text-[11px] text-purple-300/70 mb-2 block">🔢 عدد التوكنات (1-200)</label><input type="number" value={tgCount} onChange={e => setTgCount(Math.min(Math.max(Number(e.target.value), 1), 200))} min={1} max={200} className="w-full bg-black/30 border border-purple-500/30 rounded-xl px-4 py-3.5 text-white text-sm focus:outline-none focus:border-purple-400/50 transition-colors" /></div>
 
-                <div className="mb-6">
-                  <label className="text-[11px] text-purple-300/70 mb-3 block">🔧 وضع التوليد</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                    {[{ id: 'random' as const, label: '🎲 عشوائي كامل', desc: 'ولّد من الصفر' }, { id: 'userid' as const, label: '👤 من أيدي حساب', desc: 'نصف توكن ذكي' }, { id: 'fragment' as const, label: '🧩 إكمال جزء', desc: 'أكمل الناقص' }].map(mode => (
-                      <button key={mode.id} onClick={() => { if (tgRunning) stopTgGeneration(); setTgMode(mode.id); setTgResults([]); setTgHalfToken(''); setTgStats(null); setTgFragmentAnalysis(null); setResult('') }} className={`p-4 rounded-xl transition-all cursor-pointer border text-center ${tgMode === mode.id ? 'bg-purple-500/20 text-purple-400 border-purple-500/30 shadow-lg shadow-purple-500/5' : 'bg-white/3 text-white/40 border-white/10 hover:bg-white/5'}`}>
-                        <div className="text-xs font-bold">{mode.label}</div>
-                        <div className="text-[9px] mt-1.5 opacity-60">{mode.desc}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {tgMode === 'userid' && (<>
-                  <div className="mb-6"><TextInput label="👤 أيدي الحساب (Discord User ID)" value={tgUserId} onChange={setTgUserId} placeholder="مثال: 123456789012345678" accent="purple" /></div>
-                  <div className="bg-purple-500/5 rounded-xl p-4 mb-6 border border-purple-500/10"><p className="text-[11px] text-purple-400/80 leading-relaxed">💡 ضع أيدي الحساب و الموقع تولّد نصف التوكن و تكمل الباقي بأنماط ذكية مختلفة - تتولّد لما لا نهائي لحد ما تضغط إيقاف</p></div>
-                  {tgHalfToken && (<div className="bg-cyan-500/5 rounded-lg p-3.5 border border-cyan-500/15 mb-6 flex items-center gap-2"><span className="text-[10px] text-cyan-300">نصف التوكن:</span><code className="text-[10px] text-cyan-400 font-mono truncate flex-1">{tgHalfToken}.</code><button onClick={() => { navigator.clipboard.writeText(tgHalfToken).catch(() => {}) }} className="text-[10px] text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded-lg border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors cursor-pointer flex-shrink-0">📋</button></div>)}
-                </>)}
-                {tgMode === 'fragment' && (<>
-                  <div className="mb-6"><label className="text-[11px] text-white/50 mb-2 block">🧩 جزء من التوكن (ضع أي جزء تعرفه)</label><textarea value={tgFragment} onChange={e => setTgFragment(e.target.value)} placeholder={'ضع أي جزء من التوكن هنا...\n\nمثال:\n• النصف الأول: Njg2OTI4NTk...\n• نصفين مع نقطة: Njg2OTI4NTk.MTc1NT\n• الجزء الأخير (hex): a3f8b2c1d4e5...\n• النصف الأول فقط: Njg2OTI4NTk.'} rows={4} className="w-full bg-black/30 border border-purple-500/30 rounded-xl px-4 py-3.5 text-white text-xs placeholder-purple-700/30 focus:outline-none focus:border-purple-400/50 resize-none transition-colors font-mono" /></div>
-                  <div className="bg-amber-500/5 rounded-xl p-4 mb-6 border border-amber-500/10"><p className="text-[11px] text-amber-400/80 leading-relaxed">💡 الموقع ذكي جداً - تقرأ الجزء و تفهم أي جزء من التوكن وضعته و تكمل الباقي بأنماط مختلفة لحد ما تجد صالح أو توقفها</p></div>
-                  {tgFragmentAnalysis && (<div className="bg-cyan-500/5 rounded-xl p-4 mb-6 border border-cyan-500/15 animate-fade-in">
-                    <div className="flex items-center justify-between mb-3"><div className="text-[11px] text-cyan-300 font-bold">🧠 تحليل ذكي متقدم</div><div className={`text-[9px] px-2 py-0.5 rounded-full border ${tgFragmentAnalysis.confidence >= 80 ? 'bg-green-500/10 text-green-400 border-green-500/20' : tgFragmentAnalysis.confidence >= 50 ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>ثقة {tgFragmentAnalysis.confidence}%</div></div>
-                    <div className="text-[10px] text-cyan-400/90 mb-1.5 font-medium">{tgFragmentAnalysis.analysis}</div>
-                    <div className="text-[9px] text-cyan-500/50 mb-3">{tgFragmentAnalysis.detail}</div>
-                    <div className="grid grid-cols-3 gap-2 mb-3">
-                      <div className={`rounded-lg p-2 text-center text-[9px] border ${tgFragmentAnalysis.hasPart1 ? (tgFragmentAnalysis.partialPart1 ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20') : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>{tgFragmentAnalysis.hasPart1 ? (tgFragmentAnalysis.partialPart1 ? '⚠️' : '✅') : '❌'} User ID</div>
-                      <div className={`rounded-lg p-2 text-center text-[9px] border ${tgFragmentAnalysis.hasPart2 ? (tgFragmentAnalysis.partialPart2 ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20') : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>{tgFragmentAnalysis.hasPart2 ? (tgFragmentAnalysis.partialPart2 ? '⚠️' : '✅') : '❌'} Timestamp</div>
-                      <div className={`rounded-lg p-2 text-center text-[9px] border ${tgFragmentAnalysis.hasPart3 ? (tgFragmentAnalysis.partialPart3 ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20') : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>{tgFragmentAnalysis.hasPart3 ? (tgFragmentAnalysis.partialPart3 ? '⚠️' : '✅') : '❌'} Hex</div>
-                    </div>
-                    <div className="text-[9px] text-white/30 mb-1">الناقص: {tgFragmentAnalysis.missingParts.length > 0 ? tgFragmentAnalysis.missingParts.map((p: string) => p === 'P1' ? 'User ID' : p === 'P2' ? 'Timestamp' : p === 'P3' ? 'Hex' : p).join(' | ') : (tgFragmentAnalysis.partialPart1 || tgFragmentAnalysis.partialPart2 || tgFragmentAnalysis.partialPart3) ? 'أجزاء ناقصة تحتاج إكمال' : 'لا شيء'}</div>
-                    {tgFragmentAnalysis.userIDs && tgFragmentAnalysis.userIDs.length > 0 && (<div className="text-[9px] text-green-400/70 mt-1">User ID: {tgFragmentAnalysis.userIDs.join(', ')}</div>)}
-                    {tgFragmentAnalysis.timestamps && tgFragmentAnalysis.timestamps.length > 0 && (<div className="text-[9px] text-blue-400/70 mt-0.5">Timestamp: {tgFragmentAnalysis.timestamps.join(', ')}</div>)}
-                  </div>)}
-                </>)}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
-                  <ActionBtn text={tgRunning ? '⏳ جاري...' : '🎲 توليد التوكنات'} loading={tgRunning} color="purple" onClick={async () => {
-                    if (tgMode === 'userid' && (!tgUserId.trim() || tgUserId.trim().length < 17)) { setResult('❌ أدخل أيدي الحساب (17 رقم على الأقل)'); return }
-                    if (tgMode === 'fragment' && (!tgFragment.trim() || tgFragment.trim().length < 3)) { setResult('❌ ضع جزء من التوكن (3 أحرف على الأقل)'); return }
-                    setResult(''); setTgResults([]); setTgHalfToken(''); setTgStats(null); setTgFragmentAnalysis(null); setCheckerResults([]); setCheckerStats(null)
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                  <ActionBtn text={tgRunning ? '⏳ جاري التوليد...' : '🎲 توليد التوكنات'} loading={tgRunning} color="purple" onClick={async () => {
+                    setResult(''); setTgResults([]); setTgStats(null); setCheckerResults([]); setCheckerStats(null)
                     setTgRunning(true); setLoading(true); setProgress('🎰 جاري توليد التوكنات...')
                     try {
-                      const bodyObj: any = { action: 'generate', count: tgCount }
-                      if (tgMode === 'userid') { bodyObj.userId = tgUserId }
-                      if (tgMode === 'fragment') { bodyObj.fragment = tgFragment }
-                      const res = await fetch('/api/token-generator', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyObj) })
-                      const contentType = res.headers.get('content-type') || ''
-                      if (contentType.includes('application/json')) {
-                        const data = await res.json()
-                        if (data.success && data.tokens) {
-                          setTgResults(data.tokens.map((t: any) => ({ token: t.token, valid: t.valid || false, info: `${t.length}ح | ${t.userId ? 'ID:'+t.userId : ''} ${t.entropy ? 'H:'+t.entropy : ''}`, index: t.index })))
-                          setTgStats({ total: data.tokens.length, checked: 0, valid: data.tokens.filter((t: any) => t.valid).length, invalid: data.tokens.filter((t: any) => !t.valid).length, skipped: 0, speed: '0/s' })
-                          if (data.fragmentAnalysis) setTgFragmentAnalysis(data.fragmentAnalysis)
-                          setResult(data.message || `✅ تم توليد ${data.tokens.length} توكن | ✅ صالح البنية: ${data.tokens.filter((t: any) => t.valid).length}`)
-                        } else if (data.error) { setResult('❌ ' + data.error) }
-                      } else {
-                        // SSE mode (for old stream modes)
-                        const reader = res.body?.getReader()
-                        if (!reader) { setResult('❌ خطأ'); setTgRunning(false); setLoading(false); setProgress(''); return }
-                        const decoder = new TextDecoder(); let buffer = ''
-                        while (true) {
-                          const { done, value } = await reader.read()
-                          if (done) break
-                          buffer += decoder.decode(value, { stream: true })
-                          const lines = buffer.split('\n'); buffer = lines.pop() || ''
-                          for (const line of lines) {
-                            if (!line.startsWith('data: ')) continue
-                            try {
-                              const event = JSON.parse(line.substring(6))
-                              if (event.type === 'halfToken') setTgHalfToken(event.halfToken)
-                              else if (event.type === 'fragmentAnalysis') setTgFragmentAnalysis(event.analysis)
-                              else if (event.type === 'result') {
-                                setTgResults(prev => [event.data, ...prev].slice(0, 200))
-                                if (event.stats) setTgStats(event.stats as any)
-                              }
-                            } catch {}
-                          }
-                        }
-                      }
-                    } catch (e: any) { setResult('❌ خطأ في الاتصال') }
+                      const res = await fetch('/api/token-generator', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'generate', count: tgCount }) })
+                      const data = await res.json()
+                      if (data.success && data.tokens) {
+                        setTgResults(data.tokens.map((t: string, i: number) => ({ token: t, valid: false, info: `${t.length} حرف`, index: i + 1 })))
+                        setTgStats({ total: data.tokens.length, checked: 0, valid: 0, invalid: 0, skipped: 0, speed: '0/s' })
+                        setResult(`✅ تم توليد ${data.tokens.length} توكن - اضغط فحص للتحقق`)
+                      } else if (data.error) { setResult('❌ ' + data.error) }
+                    } catch { setResult('❌ خطأ في الاتصال بالسيرفر') }
                     setTgRunning(false); setLoading(false); setProgress('')
                   }} />
                   {tgResults.length > 0 && !tgRunning && (
                     <ActionBtn text="🔍 فحص التوكنات" loading={loading} color="green" onClick={async () => {
                       if (tgResults.length === 0) { setResult('❌ لا توجد توكنات للفحص'); return }
-                      setLoading(true); setProgress('🔍 جاري فحص التوكنات...'); setResult('')
+                      setLoading(true); setProgress('🔍 جاري فحص التوكنات واحد تلو الآخر...'); setResult('')
                       try {
                         const tokensToCheck = tgResults.map(r => r.token)
                         const res = await fetch('/api/token-checker', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tokens: tokensToCheck }) })
@@ -1775,7 +1710,6 @@ export default function Home() {
                           setCheckerResults(data.results)
                           if (data.stats) setCheckerStats(data.stats)
                           setResult(`✅ تم فحص ${data.stats.total} توكن | ✅ صالح: ${data.stats.valid} | ❌ غير صالح: ${data.stats.invalid}`)
-                          // Update tgResults with check validity - match by masked token
                           setTgResults(prev => prev.map(r => {
                             const masked = r.token.length > 14 ? r.token.substring(0, 10) + '***' + r.token.substring(r.token.length - 4) : r.token
                             const found = data.results.find((c: any) => c.token === masked)
@@ -1784,24 +1718,34 @@ export default function Home() {
                             }
                             return { ...r, valid: false, info: 'فشل الفحص' }
                           }))
+                          if (data.stats) {
+                            setTgStats(prev => prev ? { ...prev, checked: data.stats.total, valid: data.stats.valid, invalid: data.stats.invalid } : null)
+                          }
                         } else { setResult('❌ ' + (data.error || 'فشل الفحص')) }
                       } catch { setResult('❌ خطأ في الاتصال') }
                       setLoading(false); setProgress('')
                     }} />
                   )}
                 </div>
-                {tgStats && tgStats.total > 0 && (<div className="mt-8 grid grid-cols-3 gap-3">
+
+                {/* Stats */}
+                {tgStats && tgStats.total > 0 && (<div className="mt-6 grid grid-cols-3 gap-3">
                   <div className="bg-purple-500/8 rounded-xl p-4 border border-purple-500/15 text-center"><div className="text-lg font-black text-purple-400">{tgStats.total}</div><div className="text-[9px] text-purple-300/50">مولّد</div></div>
-                  <div className="bg-green-500/8 rounded-xl p-4 border border-green-500/15 text-center"><div className="text-lg font-black text-green-400">{tgStats.valid || 0}</div><div className="text-[9px] text-green-300/50">صالح البنية</div></div>
-                  <div className="bg-blue-500/8 rounded-xl p-4 border border-blue-500/15 text-center"><div className="text-lg font-black text-blue-400">{checkerStats ? checkerStats.valid : tgStats.total}</div><div className="text-[9px] text-blue-300/50">{checkerStats ? 'صالح فعلي' : 'بانتظار الفحص'}</div></div>
+                  <div className="bg-green-500/8 rounded-xl p-4 border border-green-500/15 text-center"><div className="text-lg font-black text-green-400">{checkerStats ? checkerStats.valid : tgStats.valid}</div><div className="text-[9px] text-green-300/50">صالح فعلي</div></div>
+                  <div className="bg-red-500/8 rounded-xl p-4 border border-red-500/15 text-center"><div className="text-lg font-black text-red-400">{checkerStats ? checkerStats.invalid : '-'}</div><div className="text-[9px] text-red-300/50">{checkerStats ? 'غير صالح' : 'بانتظار الفحص'}</div></div>
                 </div>)}
-                {tgResults.length > 0 && (<div className="mt-6 space-y-2 max-h-72 overflow-y-auto">
-                  <div className="text-[11px] text-white/30 mb-3 sticky top-0 bg-[#0d1117] py-1.5">📋 {tgResults.length} توكن:</div>
+
+                {/* Tokens List */}
+                {tgResults.length > 0 && (<div className="mt-6 space-y-2 max-h-80 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-3 sticky top-0 bg-[#0d1117] py-1.5">
+                    <span className="text-[11px] text-white/30">📋 {tgResults.length} توكن:</span>
+                    {tgResults.length > 0 && (<button onClick={() => { navigator.clipboard.writeText(tgResults.map(r => r.token).join('\n')).catch(() => {}) }} className="text-[10px] text-purple-400 bg-purple-500/10 px-3 py-1 rounded-lg border border-purple-500/20 hover:bg-purple-500/20 transition-colors cursor-pointer">📋 نسخ الكل</button>)}
+                  </div>
                   {tgResults.slice(0, 200).map((r, i) => (
-                    <div key={r.index || i} className={`flex items-center gap-2.5 p-3 rounded-xl text-[11px] font-mono border animate-fade-in ${r.valid ? 'bg-green-500/15 border-green-500/30 ring-1 ring-green-500/20' : 'bg-white/3 border-white/5'}`}>
-                      <span className="flex-shrink-0 text-xs">{r.valid ? '✅' : '⏳'}</span>
+                    <div key={r.index || i} className={`flex items-center gap-2.5 p-3 rounded-xl text-[11px] font-mono border animate-fade-in ${r.valid === true ? 'bg-green-500/15 border-green-500/30 ring-1 ring-green-500/20' : r.valid === false && r.info && r.info !== `${r.token?.length || ''} حرف` && r.info !== 'فشل الفحص' ? 'bg-red-500/15 border-red-500/30' : 'bg-white/3 border-white/5'}`}>
+                      <span className="flex-shrink-0 text-xs">{r.valid === true ? '✅' : r.valid === false && r.info !== `${r.token?.length || ''} حرف` ? '❌' : '⏳'}</span>
                       <code className="flex-1 text-white/60 break-all leading-relaxed" style={{wordBreak:'break-all',fontSize:'10px'}}>{r.token}</code>
-                      <span className="flex-shrink-0 text-[8px] text-white/20 max-w-[60px] truncate">{r.info || ''}</span>
+                      <span className="flex-shrink-0 text-[8px] text-white/20 max-w-[80px] truncate">{r.info || ''}</span>
                       <button onClick={() => { navigator.clipboard.writeText(r.token).catch(() => {}) }} className="text-[10px] text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20 hover:bg-purple-500/20 transition-colors cursor-pointer flex-shrink-0">📋</button>
                     </div>
                   ))}
