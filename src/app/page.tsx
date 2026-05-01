@@ -1687,7 +1687,7 @@ export default function Home() {
                   <label className="text-[11px] text-purple-300/70 mb-3 block">🔧 وضع التوليد</label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                     {[{ id: 'random' as const, label: '🎲 عشوائي كامل', desc: 'ولّد من الصفر' }, { id: 'userid' as const, label: '👤 من أيدي حساب', desc: 'نصف توكن ذكي' }, { id: 'fragment' as const, label: '🧩 إكمال جزء', desc: 'أكمل الناقص' }].map(mode => (
-                      <button key={mode.id} onClick={() => { setTgMode(mode.id); setTgResults([]); setTgHalfToken(''); setTgStats(null); setTgFragmentAnalysis(null); setResult('') }} className={`p-4 rounded-xl transition-all cursor-pointer border text-center ${tgMode === mode.id ? 'bg-purple-500/20 text-purple-400 border-purple-500/30 shadow-lg shadow-purple-500/5' : 'bg-white/3 text-white/40 border-white/10 hover:bg-white/5'}`}>
+                      <button key={mode.id} onClick={() => { if (tgRunning) stopTgGeneration(); setTgMode(mode.id); setTgResults([]); setTgHalfToken(''); setTgStats(null); setTgFragmentAnalysis(null); setResult('') }} className={`p-4 rounded-xl transition-all cursor-pointer border text-center ${tgMode === mode.id ? 'bg-purple-500/20 text-purple-400 border-purple-500/30 shadow-lg shadow-purple-500/5' : 'bg-white/3 text-white/40 border-white/10 hover:bg-white/5'}`}>
                         <div className="text-xs font-bold">{mode.label}</div>
                         <div className="text-[9px] mt-1.5 opacity-60">{mode.desc}</div>
                       </button>
@@ -1696,42 +1696,71 @@ export default function Home() {
                 </div>
                 {tgMode === 'userid' && (<>
                   <div className="mb-6"><TextInput label="👤 أيدي الحساب (Discord User ID)" value={tgUserId} onChange={setTgUserId} placeholder="مثال: 123456789012345678" accent="purple" /></div>
-                  <div className="bg-purple-500/5 rounded-xl p-4 mb-6 border border-purple-500/10"><p className="text-[11px] text-purple-400/80 leading-relaxed">💡 ضع أيدي الحساب و تولّد توكنات بناءً عليه</p></div>
+                  <div className="bg-purple-500/5 rounded-xl p-4 mb-6 border border-purple-500/10"><p className="text-[11px] text-purple-400/80 leading-relaxed">💡 ضع أيدي الحساب و الموقع تولّد نصف التوكن و تكمل الباقي بأنماط ذكية مختلفة - تتولّد لما لا نهائي لحد ما تضغط إيقاف</p></div>
+                  {tgHalfToken && (<div className="bg-cyan-500/5 rounded-lg p-3.5 border border-cyan-500/15 mb-6 flex items-center gap-2"><span className="text-[10px] text-cyan-300">نصف التوكن:</span><code className="text-[10px] text-cyan-400 font-mono truncate flex-1">{tgHalfToken}.</code><button onClick={() => { navigator.clipboard.writeText(tgHalfToken).catch(() => {}) }} className="text-[10px] text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded-lg border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors cursor-pointer flex-shrink-0">📋</button></div>)}
                 </>)}
                 {tgMode === 'fragment' && (<>
-                  <div className="mb-6"><label className="text-[11px] text-white/50 mb-2 block">🧩 جزء من التوكن</label><textarea value={tgFragment} onChange={e => setTgFragment(e.target.value)} placeholder={'ضع أي جزء من التوكن هنا...\n\nمثال:\n• النصف الأول: Njg2OTI4NTk...\n• نصفين مع نقطة: Njg2OTI4NTk.MTc1NT\n• الجزء الأخير (hex): a3f8b2c1d4e5...'} rows={4} className="w-full bg-black/30 border border-purple-500/30 rounded-xl px-4 py-3.5 text-white text-xs placeholder-purple-700/30 focus:outline-none focus:border-purple-400/50 resize-none transition-colors font-mono" /></div>
-                  <div className="bg-amber-500/5 rounded-xl p-4 mb-6 border border-amber-500/10"><p className="text-[11px] text-amber-400/80 leading-relaxed">💡 الموقع ذكي - يقرأ الجزء و يفهمه و يكمل الباقي</p></div>
+                  <div className="mb-6"><label className="text-[11px] text-white/50 mb-2 block">🧩 جزء من التوكن (ضع أي جزء تعرفه)</label><textarea value={tgFragment} onChange={e => setTgFragment(e.target.value)} placeholder={'ضع أي جزء من التوكن هنا...\n\nمثال:\n• النصف الأول: Njg2OTI4NTk...\n• نصفين مع نقطة: Njg2OTI4NTk.MTc1NT\n• الجزء الأخير (hex): a3f8b2c1d4e5...\n• النصف الأول فقط: Njg2OTI4NTk.'} rows={4} className="w-full bg-black/30 border border-purple-500/30 rounded-xl px-4 py-3.5 text-white text-xs placeholder-purple-700/30 focus:outline-none focus:border-purple-400/50 resize-none transition-colors font-mono" /></div>
+                  <div className="bg-amber-500/5 rounded-xl p-4 mb-6 border border-amber-500/10"><p className="text-[11px] text-amber-400/80 leading-relaxed">💡 الموقع ذكي جداً - تقرأ الجزء و تفهم أي جزء من التوكن وضعته و تكمل الباقي بأنماط مختلفة لحد ما تجد صالح أو توقفها</p></div>
                   {tgFragmentAnalysis && (<div className="bg-cyan-500/5 rounded-xl p-4 mb-6 border border-cyan-500/15 animate-fade-in">
-                    <div className="flex items-center justify-between mb-3"><div className="text-[11px] text-cyan-300 font-bold">🧠 تحليل ذكي</div><div className={`text-[9px] px-2 py-0.5 rounded-full border ${tgFragmentAnalysis.confidence >= 80 ? 'bg-green-500/10 text-green-400 border-green-500/20' : tgFragmentAnalysis.confidence >= 50 ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>ثقة {tgFragmentAnalysis.confidence}%</div></div>
+                    <div className="flex items-center justify-between mb-3"><div className="text-[11px] text-cyan-300 font-bold">🧠 تحليل ذكي متقدم</div><div className={`text-[9px] px-2 py-0.5 rounded-full border ${tgFragmentAnalysis.confidence >= 80 ? 'bg-green-500/10 text-green-400 border-green-500/20' : tgFragmentAnalysis.confidence >= 50 ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>ثقة {tgFragmentAnalysis.confidence}%</div></div>
                     <div className="text-[10px] text-cyan-400/90 mb-1.5 font-medium">{tgFragmentAnalysis.analysis}</div>
-                    <div className="text-[9px] text-cyan-500/50 mb-2">{tgFragmentAnalysis.detail}</div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className={`rounded-lg p-2 text-center text-[9px] border ${tgFragmentAnalysis.hasPart1 ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>{tgFragmentAnalysis.hasPart1 ? '✅' : '❌'} User ID</div>
-                      <div className={`rounded-lg p-2 text-center text-[9px] border ${tgFragmentAnalysis.hasPart2 ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>{tgFragmentAnalysis.hasPart2 ? '✅' : '❌'} Timestamp</div>
-                      <div className={`rounded-lg p-2 text-center text-[9px] border ${tgFragmentAnalysis.hasPart3 ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>{tgFragmentAnalysis.hasPart3 ? '✅' : '❌'} Hex</div>
+                    <div className="text-[9px] text-cyan-500/50 mb-3">{tgFragmentAnalysis.detail}</div>
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      <div className={`rounded-lg p-2 text-center text-[9px] border ${tgFragmentAnalysis.hasPart1 ? (tgFragmentAnalysis.partialPart1 ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20') : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>{tgFragmentAnalysis.hasPart1 ? (tgFragmentAnalysis.partialPart1 ? '⚠️' : '✅') : '❌'} User ID</div>
+                      <div className={`rounded-lg p-2 text-center text-[9px] border ${tgFragmentAnalysis.hasPart2 ? (tgFragmentAnalysis.partialPart2 ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20') : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>{tgFragmentAnalysis.hasPart2 ? (tgFragmentAnalysis.partialPart2 ? '⚠️' : '✅') : '❌'} Timestamp</div>
+                      <div className={`rounded-lg p-2 text-center text-[9px] border ${tgFragmentAnalysis.hasPart3 ? (tgFragmentAnalysis.partialPart3 ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 'bg-green-500/10 text-green-400 border-green-500/20') : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>{tgFragmentAnalysis.hasPart3 ? (tgFragmentAnalysis.partialPart3 ? '⚠️' : '✅') : '❌'} Hex</div>
                     </div>
+                    <div className="text-[9px] text-white/30 mb-1">الناقص: {tgFragmentAnalysis.missingParts.length > 0 ? tgFragmentAnalysis.missingParts.map((p: string) => p === 'P1' ? 'User ID' : p === 'P2' ? 'Timestamp' : p === 'P3' ? 'Hex' : p).join(' | ') : (tgFragmentAnalysis.partialPart1 || tgFragmentAnalysis.partialPart2 || tgFragmentAnalysis.partialPart3) ? 'أجزاء ناقصة تحتاج إكمال' : 'لا شيء'}</div>
+                    {tgFragmentAnalysis.userIDs && tgFragmentAnalysis.userIDs.length > 0 && (<div className="text-[9px] text-green-400/70 mt-1">User ID: {tgFragmentAnalysis.userIDs.join(', ')}</div>)}
+                    {tgFragmentAnalysis.timestamps && tgFragmentAnalysis.timestamps.length > 0 && (<div className="text-[9px] text-blue-400/70 mt-0.5">Timestamp: {tgFragmentAnalysis.timestamps.join(', ')}</div>)}
                   </div>)}
                 </>)}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
                   <ActionBtn text={tgRunning ? '⏳ جاري...' : '🎲 توليد التوكنات'} loading={tgRunning} color="purple" onClick={async () => {
                     if (tgMode === 'userid' && (!tgUserId.trim() || tgUserId.trim().length < 17)) { setResult('❌ أدخل أيدي الحساب (17 رقم على الأقل)'); return }
                     if (tgMode === 'fragment' && (!tgFragment.trim() || tgFragment.trim().length < 3)) { setResult('❌ ضع جزء من التوكن (3 أحرف على الأقل)'); return }
-                    setResult(''); setTgResults([]); setTgStats(null); setTgFragmentAnalysis(null); setCheckerResults([]); setCheckerStats(null)
+                    setResult(''); setTgResults([]); setTgHalfToken(''); setTgStats(null); setTgFragmentAnalysis(null); setCheckerResults([]); setCheckerStats(null)
                     setTgRunning(true); setLoading(true); setProgress('🎰 جاري توليد التوكنات...')
                     try {
                       const bodyObj: any = { action: 'generate', count: tgCount }
                       if (tgMode === 'userid') { bodyObj.userId = tgUserId }
                       if (tgMode === 'fragment') { bodyObj.fragment = tgFragment }
                       const res = await fetch('/api/token-generator', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyObj) })
-                      const data = await res.json()
-                      if (data.success && data.tokens) {
-                        setTgResults(data.tokens.map((t: any) => ({ token: t.token, valid: undefined as unknown as boolean, info: `${t.length}ح | ${t.userId ? 'ID:'+t.userId : ''}`, index: t.index })))
-                        setTgStats({ total: data.tokens.length, checked: 0, valid: 0, invalid: 0, skipped: 0, speed: '0/s' })
-                        if (data.fragmentAnalysis) setTgFragmentAnalysis(data.fragmentAnalysis)
-                        setResult(`✅ تم توليد ${data.tokens.length} توكن | اضغط فحص للتحقق من صلاحيتها`)
-                      } else if (data.error) { setResult('❌ ' + data.error) }
-                    } catch { setResult('❌ خطأ في الاتصال') }
+                      const contentType = res.headers.get('content-type') || ''
+                      if (contentType.includes('application/json')) {
+                        const data = await res.json()
+                        if (data.success && data.tokens) {
+                          setTgResults(data.tokens.map((t: any) => ({ token: t.token, valid: t.valid || false, info: `${t.length}ح | ${t.userId ? 'ID:'+t.userId : ''} ${t.entropy ? 'H:'+t.entropy : ''}`, index: t.index })))
+                          setTgStats({ total: data.tokens.length, checked: 0, valid: data.tokens.filter((t: any) => t.valid).length, invalid: data.tokens.filter((t: any) => !t.valid).length, skipped: 0, speed: '0/s' })
+                          if (data.fragmentAnalysis) setTgFragmentAnalysis(data.fragmentAnalysis)
+                          setResult(data.message || `✅ تم توليد ${data.tokens.length} توكن | ✅ صالح البنية: ${data.tokens.filter((t: any) => t.valid).length}`)
+                        } else if (data.error) { setResult('❌ ' + data.error) }
+                      } else {
+                        // SSE mode (for old stream modes)
+                        const reader = res.body?.getReader()
+                        if (!reader) { setResult('❌ خطأ'); setTgRunning(false); setLoading(false); setProgress(''); return }
+                        const decoder = new TextDecoder(); let buffer = ''
+                        while (true) {
+                          const { done, value } = await reader.read()
+                          if (done) break
+                          buffer += decoder.decode(value, { stream: true })
+                          const lines = buffer.split('\n'); buffer = lines.pop() || ''
+                          for (const line of lines) {
+                            if (!line.startsWith('data: ')) continue
+                            try {
+                              const event = JSON.parse(line.substring(6))
+                              if (event.type === 'halfToken') setTgHalfToken(event.halfToken)
+                              else if (event.type === 'fragmentAnalysis') setTgFragmentAnalysis(event.analysis)
+                              else if (event.type === 'result') {
+                                setTgResults(prev => [event.data, ...prev].slice(0, 200))
+                                if (event.stats) setTgStats(event.stats as any)
+                              }
+                            } catch {}
+                          }
+                        }
+                      }
+                    } catch (e: any) { setResult('❌ خطأ في الاتصال') }
                     setTgRunning(false); setLoading(false); setProgress('')
                   }} />
                   {tgResults.length > 0 && !tgRunning && (
@@ -1746,38 +1775,33 @@ export default function Home() {
                           setCheckerResults(data.results)
                           if (data.stats) setCheckerStats(data.stats)
                           setResult(`✅ تم فحص ${data.stats.total} توكن | ✅ صالح: ${data.stats.valid} | ❌ غير صالح: ${data.stats.invalid}`)
+                          // Update tgResults with check validity - match by masked token
                           setTgResults(prev => prev.map(r => {
                             const masked = r.token.length > 14 ? r.token.substring(0, 10) + '***' + r.token.substring(r.token.length - 4) : r.token
                             const found = data.results.find((c: any) => c.token === masked)
-                            if (found) { return { ...r, valid: found.valid, info: found.valid ? `${found.type || ''} | ${found.name || ''} | ID: ${found.id}` : (found.error || 'غير صالح') } }
+                            if (found) {
+                              return { ...r, valid: found.valid, info: found.valid ? `${found.type || ''} | ${found.name || ''} | ID: ${found.id}` : (found.error || 'غير صالح') }
+                            }
                             return { ...r, valid: false, info: 'فشل الفحص' }
                           }))
-                          if (data.stats) { setTgStats(prev => prev ? { ...prev, checked: data.stats.total, valid: data.stats.valid, invalid: data.stats.invalid } : null) }
                         } else { setResult('❌ ' + (data.error || 'فشل الفحص')) }
                       } catch { setResult('❌ خطأ في الاتصال') }
                       setLoading(false); setProgress('')
                     }} />
                   )}
                 </div>
-
-                {/* Stats */}
-                {tgStats && tgStats.total > 0 && (<div className="mt-6 grid grid-cols-3 gap-3">
+                {tgStats && tgStats.total > 0 && (<div className="mt-8 grid grid-cols-3 gap-3">
                   <div className="bg-purple-500/8 rounded-xl p-4 border border-purple-500/15 text-center"><div className="text-lg font-black text-purple-400">{tgStats.total}</div><div className="text-[9px] text-purple-300/50">مولّد</div></div>
-                  <div className="bg-green-500/8 rounded-xl p-4 border border-green-500/15 text-center"><div className="text-lg font-black text-green-400">{checkerStats ? checkerStats.valid : '-'}</div><div className="text-[9px] text-green-300/50">{checkerStats ? 'صالح فعلي' : 'بانتظار الفحص'}</div></div>
-                  <div className="bg-blue-500/8 rounded-xl p-4 border border-blue-500/15 text-center"><div className="text-lg font-black text-blue-400">{checkerStats ? checkerStats.invalid : '-'}</div><div className="text-[9px] text-blue-300/50">{checkerStats ? 'غير صالح' : 'بانتظار الفحص'}</div></div>
+                  <div className="bg-green-500/8 rounded-xl p-4 border border-green-500/15 text-center"><div className="text-lg font-black text-green-400">{tgStats.valid || 0}</div><div className="text-[9px] text-green-300/50">صالح البنية</div></div>
+                  <div className="bg-blue-500/8 rounded-xl p-4 border border-blue-500/15 text-center"><div className="text-lg font-black text-blue-400">{checkerStats ? checkerStats.valid : tgStats.total}</div><div className="text-[9px] text-blue-300/50">{checkerStats ? 'صالح فعلي' : 'بانتظار الفحص'}</div></div>
                 </div>)}
-
-                {/* Tokens List */}
-                {tgResults.length > 0 && (<div className="mt-6 space-y-2 max-h-80 overflow-y-auto">
-                  <div className="flex items-center justify-between mb-3 sticky top-0 bg-[#0d1117] py-1.5">
-                    <span className="text-[11px] text-white/30">📋 {tgResults.length} توكن:</span>
-                    {tgResults.length > 0 && (<button onClick={() => { navigator.clipboard.writeText(tgResults.map(r => r.token).join('\n')).catch(() => {}) }} className="text-[10px] text-purple-400 bg-purple-500/10 px-3 py-1 rounded-lg border border-purple-500/20 hover:bg-purple-500/20 transition-colors cursor-pointer">📋 نسخ الكل</button>)}
-                  </div>
+                {tgResults.length > 0 && (<div className="mt-6 space-y-2 max-h-72 overflow-y-auto">
+                  <div className="text-[11px] text-white/30 mb-3 sticky top-0 bg-[#0d1117] py-1.5">📋 {tgResults.length} توكن:</div>
                   {tgResults.slice(0, 200).map((r, i) => (
-                    <div key={r.index || i} className={`flex items-center gap-2.5 p-3 rounded-xl text-[11px] font-mono border animate-fade-in ${r.valid === true ? 'bg-green-500/15 border-green-500/30 ring-1 ring-green-500/20' : r.valid === false && r.info !== `${r.token?.length}ح` && r.info !== 'فشل الفحص' ? 'bg-red-500/15 border-red-500/30' : 'bg-white/3 border-white/5'}`}>
-                      <span className="flex-shrink-0 text-xs">{r.valid === true ? '✅' : r.valid === false && r.info !== `${r.token?.length}ح` ? '❌' : '⏳'}</span>
+                    <div key={r.index || i} className={`flex items-center gap-2.5 p-3 rounded-xl text-[11px] font-mono border animate-fade-in ${r.valid ? 'bg-green-500/15 border-green-500/30 ring-1 ring-green-500/20' : 'bg-white/3 border-white/5'}`}>
+                      <span className="flex-shrink-0 text-xs">{r.valid ? '✅' : '⏳'}</span>
                       <code className="flex-1 text-white/60 break-all leading-relaxed" style={{wordBreak:'break-all',fontSize:'10px'}}>{r.token}</code>
-                      <span className="flex-shrink-0 text-[8px] text-white/20 max-w-[80px] truncate">{r.info || ''}</span>
+                      <span className="flex-shrink-0 text-[8px] text-white/20 max-w-[60px] truncate">{r.info || ''}</span>
                       <button onClick={() => { navigator.clipboard.writeText(r.token).catch(() => {}) }} className="text-[10px] text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20 hover:bg-purple-500/20 transition-colors cursor-pointer flex-shrink-0">📋</button>
                     </div>
                   ))}
@@ -3891,72 +3915,118 @@ function PrimeModal({ show, onClose, isPrime, onActivate }: { show: boolean; onC
                 <button onClick={() => { setTab('key'); setMsg('') }} className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border ${tab === 'key' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-white/3 text-white/40 border-white/10'}`}>🔑 مفتاح</button>
               </div>
 
-              <div className="mb-4">
-                <label className="text-[11px] text-white/50 mb-1 block">🎫 توكن حسابك</label>
-                <input type="password" value={token} onChange={e => setToken(e.target.value)} placeholder="ألصق توكنك هنا..." className="w-full bg-black/30 border border-yellow-500/20 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none focus:border-yellow-400/40 transition-colors" />
-              </div>
-
               {tab === 'buy' && (
-                <div className="bg-blue-500/5 rounded-xl p-4 border border-blue-500/10 mb-4 space-y-3">
-                  <div className="text-center mb-2">
-                    <p className="text-[11px] text-blue-400 font-bold">📋 خطوات الشراء:</p>
+                <div className="space-y-3 mb-4">
+                  {/* Server Invite Banner */}
+                  <a href="https://discord.com/invite/aWS4P43P3f" target="_blank" rel="noopener noreferrer" className="block bg-gradient-to-br from-[#5865F2]/20 to-[#5865F2]/5 border border-[#5865F2]/30 rounded-2xl p-4 hover:border-[#5865F2]/50 transition-all group">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-12 h-12 rounded-full bg-[#5865F2]/20 border border-[#5865F2]/30 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">🛡️</div>
+                      <div className="flex-1">
+                        <div className="text-sm font-bold text-white group-hover:text-[#5865F2] transition-colors">TRJ BOT Server</div>
+                        <div className="text-[10px] text-white/40">discord.gg/aWS4P43P3f</div>
+                      </div>
+                      <div className="bg-[#5865F2] text-white text-[10px] font-bold px-3 py-1.5 rounded-lg group-hover:bg-[#4752C4] transition-colors">ادخل</div>
+                    </div>
+                    <div className="flex gap-4 text-[10px] text-white/40">
+                      <span>👥 أعضاء متواجدين</span>
+                      <span>💬 رومات نصية</span>
+                      <span>🛡️ سيرفر رسمي</span>
+                    </div>
+                  </a>
+
+                  {/* Steps */}
+                  <div className="bg-blue-500/5 rounded-xl p-4 border border-blue-500/10 space-y-2.5">
+                    <div className="text-center mb-2">
+                      <p className="text-[11px] text-blue-400 font-bold">📋 خطوات التفعيل بالكرديت:</p>
+                    </div>
+                    <div className="flex items-start gap-2.5 bg-black/20 rounded-lg p-2.5 border border-white/5">
+                      <span className="text-base flex-shrink-0">1️⃣</span>
+                      <div>
+                        <span className="text-[11px] text-white/80">ادخل سيرفر TRJ BOT</span>
+                        <a href="https://discord.com/invite/aWS4P43P3f" target="_blank" rel="noopener noreferrer" className="block text-[10px] text-cyan-400 underline mt-0.5">https://discord.gg/aWS4P43P3f</a>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5 bg-black/20 rounded-lg p-2.5 border border-white/5">
+                      <span className="text-base flex-shrink-0">2️⃣</span>
+                      <span className="text-[11px] text-white/80">روح لروم التحويل واكتب الأمر:</span>
+                    </div>
+                    <div className="bg-black/30 rounded-lg p-2.5 border border-yellow-500/20">
+                      <code className="text-[11px] text-yellow-400 font-mono select-all">c 1460035924250333376 2000000</code>
+                    </div>
+                    <div className="flex items-start gap-2.5 bg-green-500/5 rounded-lg p-2.5 border border-green-500/10">
+                      <span className="text-base flex-shrink-0">3️⃣</span>
+                      <span className="text-[11px] text-green-400/80">بعد التحويل سيتم تفعيل Prime تلقائياً على حسابك! 🎉</span>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 bg-black/20 rounded-lg p-2 border border-white/5">
-                      <span className="text-base">1️⃣</span>
-                      <a href="https://discord.com/invite/aWS4P43P3f" target="_blank" rel="noopener noreferrer" className="text-[11px] text-cyan-400 underline">ادخل السيرفر</a>
-                    </div>
-                    <div className="flex items-center gap-2 bg-black/20 rounded-lg p-2 border border-white/5">
-                      <span className="text-base">2️⃣</span>
-                      <span className="text-[11px] text-white/60">روح لروم التحويل</span>
-                    </div>
-                    <div className="flex items-center gap-2 bg-black/20 rounded-lg p-2 border border-white/5">
-                      <span className="text-base">3️⃣</span>
-                      <code className="text-[11px] text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded">c 1460035924250333376 2000000</code>
-                    </div>
-                    <div className="flex items-center gap-2 bg-black/20 rounded-lg p-2 border border-white/5">
-                      <span className="text-base">4️⃣</span>
-                      <span className="text-[11px] text-white/60">بعد التحويل = Prime مفعّل!</span>
-                    </div>
+
+                  <div className="bg-yellow-500/8 rounded-xl p-3 border border-yellow-500/15">
+                    <p className="text-[10px] text-yellow-400/80 text-center">⚠️ تأكد أن لديك <b>2,000,000 كرديت</b> في حسابك قبل التحويل</p>
                   </div>
-                  <p className="text-[10px] text-white/30 text-center">⚠️ تأكد أن لديك 2,000,000 كرديت قبل التحويل</p>
+
+                  <a href="https://discord.com/invite/aWS4P43P3f" target="_blank" rel="noopener noreferrer" className="block w-full py-3.5 rounded-xl font-black text-sm text-center bg-gradient-to-r from-[#5865F2] to-[#4752C4] text-white hover:from-[#4752C4] hover:to-[#3c45a8] transition-all active:scale-[0.98]">
+                    🚀 ادخل السيرفر الآن
+                  </a>
                 </div>
               )}
 
               {tab === 'nitro' && (
-                <div className="bg-purple-500/5 rounded-xl p-4 border border-purple-500/10 mb-4 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">💎</span>
-                    <p className="text-[11px] text-purple-400 font-bold">بوستين = Prime مجاني!</p>
+                <div className="space-y-3 mb-4">
+                  {/* Server Invite Banner */}
+                  <a href="https://discord.com/invite/aWS4P43P3f" target="_blank" rel="noopener noreferrer" className="block bg-gradient-to-br from-purple-500/20 to-pink-500/5 border border-purple-500/30 rounded-2xl p-4 hover:border-purple-500/50 transition-all group">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-12 h-12 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">💎</div>
+                      <div className="flex-1">
+                        <div className="text-sm font-bold text-white group-hover:text-purple-400 transition-colors">Prime مجاني بالنيترو!</div>
+                        <div className="text-[10px] text-white/40">بوستين فقط في السيرفر</div>
+                      </div>
+                      <div className="bg-purple-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg group-hover:bg-purple-600 transition-colors">ادخل</div>
+                    </div>
+                  </a>
+
+                  {/* Steps */}
+                  <div className="bg-purple-500/5 rounded-xl p-4 border border-purple-500/10 space-y-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">💎</span>
+                      <p className="text-[11px] text-purple-400 font-bold">بوستين = Prime مجاني!</p>
+                    </div>
+                    <div className="flex items-start gap-2.5 bg-black/20 rounded-lg p-2.5 border border-white/5">
+                      <span className="text-base flex-shrink-0">1️⃣</span>
+                      <div>
+                        <span className="text-[11px] text-white/80">ادخل سيرفر TRJ BOT</span>
+                        <a href="https://discord.com/invite/aWS4P43P3f" target="_blank" rel="noopener noreferrer" className="block text-[10px] text-cyan-400 underline mt-0.5">https://discord.gg/aWS4P43P3f</a>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2.5 bg-black/20 rounded-lg p-2.5 border border-white/5">
+                      <span className="text-base flex-shrink-0">2️⃣</span>
+                      <span className="text-[11px] text-white/80">سوّي <b className="text-purple-400">بوستين</b> في السيرفر (بستات حقيقية)</span>
+                    </div>
+                    <div className="flex items-start gap-2.5 bg-green-500/5 rounded-lg p-2.5 border border-green-500/10">
+                      <span className="text-base flex-shrink-0">3️⃣</span>
+                      <span className="text-[11px] text-green-400/80">بعد بوستين = Prime مفعّل تلقائياً! 🎉</span>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 bg-black/20 rounded-lg p-2 border border-white/5">
-                      <span className="text-base">1️⃣</span>
-                      <a href="https://discord.com/invite/aWS4P43P3f" target="_blank" rel="noopener noreferrer" className="text-[11px] text-cyan-400 underline">ادخل السيرفر</a>
-                    </div>
-                    <div className="flex items-center gap-2 bg-black/20 rounded-lg p-2 border border-white/5">
-                      <span className="text-base">2️⃣</span>
-                      <span className="text-[11px] text-white/60">سوّي بوستين للسيرفر</span>
-                    </div>
-                    <div className="flex items-center gap-2 bg-black/20 rounded-lg p-2 border border-white/5">
-                      <span className="text-base">3️⃣</span>
-                      <span className="text-[11px] text-white/60">اضغط الزر = تفعيل تلقائي!</span>
-                    </div>
+
+                  <div className="bg-purple-500/8 rounded-xl p-3 border border-purple-500/15">
+                    <p className="text-[10px] text-purple-400/80 text-center">💡 لو سويته مسبقاً = التفعيل تلقائي عند فتح الصفحة</p>
                   </div>
-                  {bumpCount > 0 && (
-                    <div className="bg-yellow-500/10 rounded-lg p-2 border border-yellow-500/20 text-center">
-                      <span className="text-[11px] text-yellow-400">📊 سجلت {bumpCount} بوست{bumpCount < 2 ? ` - تحتاج ${2 - bumpCount} إضافي` : ' - كامل!'}</span>
-                    </div>
-                  )}
-                  <p className="text-[9px] text-white/25 text-center">⚠️ لو سويته مسبقاً = تفعيل تلقائي</p>
+
+                  <a href="https://discord.com/invite/aWS4P43P3f" target="_blank" rel="noopener noreferrer" className="block w-full py-3.5 rounded-xl font-black text-sm text-center bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transition-all active:scale-[0.98]">
+                    💎 ادخل السيرفر وابدأ البوست
+                  </a>
                 </div>
               )}
 
               {tab === 'key' && (
                 <div className="mb-4">
-                  <label className="text-[11px] text-emerald-300/70 mb-1 block">🔑 المفتاح السري</label>
-                  <input type="text" value={primeKey} onChange={e => setPrimeKey(e.target.value)} placeholder="أدخل مفتاح التفعيل..." className="w-full bg-black/30 border border-emerald-500/20 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none focus:border-emerald-400/40 transition-colors font-mono" />
-                  <div className="bg-emerald-500/5 rounded-xl p-3 border border-emerald-500/10 mt-2">
+                  <div className="mb-4">
+                    <label className="text-[11px] text-white/50 mb-1 block">🎫 توكن حسابك</label>
+                    <input type="password" value={token} onChange={e => setToken(e.target.value)} placeholder="ألصق توكنك هنا..." className="w-full bg-black/30 border border-yellow-500/20 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none focus:border-yellow-400/40 transition-colors" />
+                  </div>
+                  <div className="mb-3">
+                    <label className="text-[11px] text-emerald-300/70 mb-1 block">🔑 المفتاح السري</label>
+                    <input type="text" value={primeKey} onChange={e => setPrimeKey(e.target.value)} placeholder="أدخل مفتاح التفعيل..." className="w-full bg-black/30 border border-emerald-500/20 rounded-xl px-4 py-3 text-white text-sm placeholder-white/20 focus:outline-none focus:border-emerald-400/40 transition-colors font-mono" />
+                  </div>
+                  <div className="bg-emerald-500/5 rounded-xl p-3 border border-emerald-500/10">
                     <p className="text-[10px] text-emerald-400/60 text-center leading-relaxed">
                       🔑 أدخل المفتاح الذي حصلت عليه من صاحب البوت لتفعيل Prime
                     </p>
@@ -3964,9 +4034,11 @@ function PrimeModal({ show, onClose, isPrime, onActivate }: { show: boolean; onC
                 </div>
               )}
 
-              <button onClick={tab === 'buy' ? handlePurchase : tab === 'nitro' ? handleNitroPost : handleKeyActivate} disabled={loading} className={`w-full py-3.5 rounded-xl font-black text-sm transition-all cursor-pointer border ${loading ? 'opacity-50 cursor-not-allowed bg-yellow-500/10 text-yellow-500/50 border-yellow-500/20' : tab === 'key' ? 'bg-gradient-to-r from-emerald-500/20 to-green-500/15 text-emerald-400 border-emerald-500/30 hover:from-emerald-500/30 hover:to-green-500/25 active:scale-[0.98]' : tab === 'nitro' ? 'bg-gradient-to-r from-purple-500/20 to-pink-500/15 text-purple-400 border-purple-500/30 hover:from-purple-500/30 hover:to-pink-500/25 active:scale-[0.98]' : 'bg-gradient-to-r from-yellow-500/20 to-amber-500/15 text-yellow-400 border-yellow-500/30 hover:from-yellow-500/30 hover:to-amber-500/25 active:scale-[0.98]'}`}>
-                {loading ? (nitroStatus === 'checking' ? '⏳ جاري فحص النيترو...' : '⏳ جاري المعالجة...') : tab === 'buy' ? '⭐ شراء Prime - 2M كرديت' : tab === 'nitro' ? '💎 بوست نيترو - تفعيل Prime' : '🔑 تفعيل المفتاح'}
-              </button>
+              {tab === 'key' && (
+                <button onClick={handleKeyActivate} disabled={loading} className={`w-full py-3.5 rounded-xl font-black text-sm transition-all cursor-pointer border ${loading ? 'opacity-50 cursor-not-allowed bg-yellow-500/10 text-yellow-500/50 border-yellow-500/20' : 'bg-gradient-to-r from-emerald-500/20 to-green-500/15 text-emerald-400 border-emerald-500/30 hover:from-emerald-500/30 hover:to-green-500/25 active:scale-[0.98]'}`}>
+                  {loading ? '⏳ جاري التفعيل...' : '🔑 تفعيل المفتاح'}
+                </button>
+              )}
             </>
           )}
 
