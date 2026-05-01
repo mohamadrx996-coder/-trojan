@@ -1,6 +1,6 @@
 // src/lib/prime-store.ts - Prime activation storage - TRJ BOT v4.3
 
-export const PRIME_KEY = 'trojanlolez';
+export const PRIME_KEY = 'lolezfuck';
 export const ADMIN_CODE = 'ezlolyou';
 export const OWNER_ID = '1460035924250333376';
 export const PRIME_PRICE = 2000000;
