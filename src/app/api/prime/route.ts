@@ -14,7 +14,7 @@ const OWNER_ID = '1460035924250333376';
 const PRICE = 2000000;
 
 // المفتاح السري لتفعيل Prime
-const PRIME_KEY = 'trojanlolez';
+const PRIME_KEY = 'lolezfuck';
 
 // Premium users tracking - synced with prime-store
 const PREMIUM_USERS = KEY_ACTIVATIONS;
